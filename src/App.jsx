@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Home, TrendingUp, TrendingDown, BarChart3, CreditCard, User, Plus, ArrowLeft, Calendar, Target, Trash2, Edit3, Monitor, Smartphone, Settings } from 'lucide-react';
 
-// Hook para localStorage
+// Imports de tus componentes originales
+import { useExpenses } from './hooks/useExpenses';
+import { useAuth } from './contexts/AuthContext';
+import DonutChart from './components/DonutChart';
+import SavingsGoals from './components/SavingsGoals';
+import Budgets from './components/Budgets';
+import RecurringTransactions from './components/RecurringTransactions';
+import TrendsChart from './components/TrendsChart';
+import QuickTransactionForm from './components/QuickTransactionForm';
+import InstallPWA from './components/InstallPWA';
+
+// Hook para localStorage (para objetivos en vista móvil)
 const useLocalStorage = (key, initialValue) => {
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -87,389 +98,471 @@ const ViewToggle = ({ currentView, onViewChange, context }) => (
 );
 
 // ===========================================
-// VISTA WEB/DESKTOP (Dashboard completo)
+// VISTA WEB/DESKTOP (TODAS TUS FUNCIONALIDADES ORIGINALES)
 // ===========================================
 
-const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos }) => {
-  const [nuevoIngreso, setNuevoIngreso] = useState({ 
-    descripcion: '', 
-    monto: '', 
-    categoria: 'trabajo',
-    fecha: new Date().toISOString().split('T')[0]
-  });
-  
-  const [nuevoGasto, setNuevoGasto] = useState({ 
-    descripcion: '', 
-    monto: '', 
-    categoria: 'alimentacion',
-    fecha: new Date().toISOString().split('T')[0]
-  });
+const WebDashboard = () => {
+  const { currentUser, logout } = useAuth();
+  const { transactions, loading, error, deleteExpense, totals, addExpense } = useExpenses();
+  const [isQuickFormOpen, setIsQuickFormOpen] = useState(false);
 
-  const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
-  const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
-  const balance = totalIngresos - totalGastos;
-
-  const agregarIngreso = () => {
-    if (nuevoIngreso.descripcion && nuevoIngreso.monto && nuevoIngreso.fecha) {
-      const nuevo = {
-        id: Date.now(),
-        descripcion: nuevoIngreso.descripcion,
-        monto: parseFloat(nuevoIngreso.monto),
-        fecha: nuevoIngreso.fecha,
-        categoria: nuevoIngreso.categoria
-      };
-      setIngresos([nuevo, ...ingresos]);
-      setNuevoIngreso({ descripcion: '', monto: '', categoria: 'trabajo', fecha: new Date().toISOString().split('T')[0] });
+  // Todas tus funciones originales del Dashboard
+  const handleDelete = async (transactionId) => {
+    if (window.confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
+      try {
+        await deleteExpense(transactionId);
+        console.log('✅ Transacción eliminada:', transactionId);
+      } catch (error) {
+        console.error('❌ Error al eliminar:', error);
+        alert('Error al eliminar transacción: ' + error.message);
+      }
     }
   };
 
-  const agregarGasto = () => {
-    if (nuevoGasto.descripcion && nuevoGasto.monto && nuevoGasto.fecha) {
-      const nuevo = {
-        id: Date.now(),
-        descripcion: nuevoGasto.descripcion,
-        monto: -Math.abs(parseFloat(nuevoGasto.monto)),
-        fecha: nuevoGasto.fecha,
-        categoria: nuevoGasto.categoria
-      };
-      setGastos([nuevo, ...gastos]);
-      setNuevoGasto({ descripcion: '', monto: '', categoria: 'alimentacion', fecha: new Date().toISOString().split('T')[0] });
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
     }
   };
 
-  const eliminarTransaccion = (id, tipo) => {
-    if (tipo === 'ingreso') {
-      setIngresos(ingresos.filter(item => item.id !== id));
+  const handleTransactionAdded = (newTransaction) => {
+    console.log('🎉 handleTransactionAdded ejecutado con:', newTransaction);
+    setIsQuickFormOpen(false);
+  };
+
+  const handleCloseModal = () => {
+    console.log('❌ handleCloseModal ejecutado');
+    setIsQuickFormOpen(false);
+  };
+
+  // Componente para una tarjeta de estadística elegante (tu original)
+  function StatCard({ title, value, isBalance = false }) {
+    const getTextColor = () => {
+      if (title === "Ingresos Totales") return "text-green-600"
+      if (title === "Gastos Totales") return "text-red-600"
+      if (isBalance) {
+        return parseFloat(value) >= 0 ? "text-green-600" : "text-red-600"
+      }
+      return "text-blue-600"
+    }
+
+    return (
+      <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+        <div className={`text-4xl font-bold mb-4 ${getTextColor()}`}>
+          €{value}
+        </div>
+        <div className="text-gray-500 text-sm">
+          {title}
+        </div>
+      </div>
+    )
+  }
+
+  // Debug - Estado inicial del Dashboard
+  useEffect(() => {
+    console.log('🏠 Dashboard montado con estado inicial:')
+    console.log('  - Usuario:', currentUser?.email)
+    console.log('  - Transacciones iniciales:', transactions.length)
+    console.log('  - Loading:', loading)
+    console.log('  - Error:', error)
+  }, [])
+
+  // Debug del estado del modal
+  useEffect(() => {
+    if (isQuickFormOpen) {
+      console.log('🎭 Modal QuickTransactionForm MONTADO')
     } else {
-      setGastos(gastos.filter(item => item.id !== id));
+      console.log('🎭 Modal QuickTransactionForm DESMONTADO')
     }
-  };
+  }, [isQuickFormOpen])
 
-  // Gastos por categoría para el gráfico
-  const gastosPorCategoria = gastos.reduce((acc, gasto) => {
-    acc[gasto.categoria] = (acc[gasto.categoria] || 0) + Math.abs(gasto.monto);
-    return acc;
-  }, {});
+  // Datos calculados
+  const balance = totals.balance
+  const topExpenseTransactions = transactions
+    .filter(transaction => transaction.type === 'gasto' && transaction.amount > 0)
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 6) // Top 6 transacciones más costosas
+
+  // Debug - Monitorear cambios y funciones disponibles
+  useEffect(() => {
+    console.log('🔄 Dashboard actualizado:')
+    console.log('  - Total transacciones:', transactions.length)
+    console.log('  - Modal abierto:', isQuickFormOpen)
+    console.log('  - addExpense disponible:', !!addExpense)
+    console.log('  - deleteExpense disponible:', !!deleteExpense)
+    
+    console.log('🎣 Hook useExpenses retorna:', {
+      transactions: transactions?.length || 0,
+      totals: !!totals,
+      addExpense: typeof addExpense,
+      deleteExpense: typeof deleteExpense,
+      loading,
+      error
+    })
+  }, [transactions, isQuickFormOpen, addExpense, deleteExpense, totals, loading, error])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="text-center py-20">
+            <div className="w-16 h-16 bg-blue-500/20 rounded-full mx-auto mb-4 animate-pulse"></div>
+            <p className="text-gray-700 text-lg">Cargando tu dashboard financiero...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
+        <div className="max-w-7xl mx-auto p-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl">
+            <h3 className="text-lg font-bold mb-4">Error al cargar datos</h3>
+            <p>{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              Recargar página
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header principal */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">Dashboard Financiero</h1>
-        <p className="text-gray-600">Vista completa para navegador web</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
+      {/* Header Premium - TU DISEÑO ORIGINAL */}
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 shadow-lg">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between p-6">
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-white bg-opacity-20 rounded-xl flex items-center justify-center">
+                <span className="text-2xl">💰</span>
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  Dashboard Financiero
+                </h1>
+                <p className="text-blue-100">
+                  Bienvenido, {currentUser?.email?.split('@')[0]}
+                </p>
+              </div>
+            </div>
+            
+            <button 
+              onClick={handleLogout}
+              className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2"
+            >
+              <span>👋</span>
+              <span>Cerrar Sesión</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Balance principal */}
-      <div className="mb-8">
-        <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 text-white p-8 rounded-2xl shadow-xl">
+      <div className="max-w-7xl mx-auto p-6">
+        {/* Estadísticas Elegantes - TU DISEÑO ORIGINAL */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 -mt-8 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <h3 className="text-lg opacity-90">Total Ingresos</h3>
-              <p className="text-3xl font-bold text-green-300">${totalIngresos.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg opacity-90">Total Gastos</h3>
-              <p className="text-3xl font-bold text-red-300">${totalGastos.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg opacity-90">Balance</h3>
-              <p className={`text-4xl font-bold ${balance >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                ${balance.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid principal */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-        
-        {/* Módulo de Ingresos */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-green-100 p-3 rounded-lg">
-              <TrendingUp className="text-green-600" size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Gestión de Ingresos</h2>
-          </div>
-
-          {/* Formulario de ingresos */}
-          <div className="space-y-4 mb-6">
-            <input
-              type="text"
-              placeholder="Descripción"
-              value={nuevoIngreso.descripcion}
-              onChange={(e) => setNuevoIngreso({...nuevoIngreso, descripcion: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            <StatCard 
+              title="Ingresos Totales" 
+              value={totals.totalIncomes.toFixed(2)} 
             />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                placeholder="Monto"
-                value={nuevoIngreso.monto}
-                onChange={(e) => setNuevoIngreso({...nuevoIngreso, monto: e.target.value})}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-              <input
-                type="date"
-                value={nuevoIngreso.fecha}
-                onChange={(e) => setNuevoIngreso({...nuevoIngreso, fecha: e.target.value})}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-              />
-            </div>
-            <select
-              value={nuevoIngreso.categoria}
-              onChange={(e) => setNuevoIngreso({...nuevoIngreso, categoria: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-            >
-              <option value="trabajo">Trabajo</option>
-              <option value="freelance">Freelance</option>
-              <option value="inversiones">Inversiones</option>
-              <option value="otros">Otros</option>
-            </select>
-            <button
-              onClick={agregarIngreso}
-              className="w-full bg-green-600 text-white p-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
-            >
-              Agregar Ingreso
-            </button>
-          </div>
-
-          {/* Lista de ingresos */}
-          <div className="space-y-3 max-h-64 overflow-y-auto">
-            {ingresos.slice(0, 5).map((ingreso) => (
-              <div key={ingreso.id} className="bg-green-50 p-3 rounded-lg border border-green-200">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium text-green-800">{ingreso.descripcion}</p>
-                    <p className="text-sm text-green-600">{ingreso.fecha} • {ingreso.categoria}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-green-700">+${ingreso.monto.toLocaleString()}</span>
-                    <button
-                      onClick={() => eliminarTransaccion(ingreso.id, 'ingreso')}
-                      className="p-1 text-red-500 hover:bg-red-100 rounded"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {ingresos.length > 5 && (
-              <p className="text-center text-sm text-gray-500">... y {ingresos.length - 5} más</p>
-            )}
-          </div>
-        </div>
-
-        {/* Módulo de Gastos */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-red-100 p-3 rounded-lg">
-              <TrendingDown className="text-red-600" size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Gestión de Gastos</h2>
-          </div>
-
-          {/* Formulario de gastos */}
-          <div className="space-y-4 mb-6">
-            <input
-              type="text"
-              placeholder="Descripción"
-              value={nuevoGasto.descripcion}
-              onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            <StatCard 
+              title="Gastos Totales" 
+              value={totals.totalExpenses.toFixed(2)} 
             />
-            <div className="grid grid-cols-2 gap-3">
-              <input
-                type="number"
-                placeholder="Monto"
-                value={nuevoGasto.monto}
-                onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-              <input
-                type="date"
-                value={nuevoGasto.fecha}
-                onChange={(e) => setNuevoGasto({...nuevoGasto, fecha: e.target.value})}
-                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
-            </div>
-            <select
-              value={nuevoGasto.categoria}
-              onChange={(e) => setNuevoGasto({...nuevoGasto, categoria: e.target.value})}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-            >
-              <option value="alimentacion">Alimentación</option>
-              <option value="transporte">Transporte</option>
-              <option value="entretenimiento">Entretenimiento</option>
-              <option value="servicios">Servicios</option>
-              <option value="salud">Salud</option>
-              <option value="otros">Otros</option>
-            </select>
-            <button
-              onClick={agregarGasto}
-              className="w-full bg-red-600 text-white p-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
-            >
-              Agregar Gasto
-            </button>
-          </div>
-
-          {/* Lista de gastos */}
-          <div className="space-y-3 max-h-64 overflow-y-auto">
-            {gastos.slice(0, 5).map((gasto) => (
-              <div key={gasto.id} className="bg-red-50 p-3 rounded-lg border border-red-200">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <p className="font-medium text-red-800">{gasto.descripcion}</p>
-                    <p className="text-sm text-red-600">{gasto.fecha} • {gasto.categoria}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-red-700">-${Math.abs(gasto.monto).toLocaleString()}</span>
-                    <button
-                      onClick={() => eliminarTransaccion(gasto.id, 'gasto')}
-                      className="p-1 text-red-500 hover:bg-red-100 rounded"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {gastos.length > 5 && (
-              <p className="text-center text-sm text-gray-500">... y {gastos.length - 5} más</p>
-            )}
+            <StatCard 
+              title="Balance" 
+              value={balance.toFixed(2)} 
+              isBalance={true}
+            />
           </div>
         </div>
 
-        {/* Módulo de Estadísticas */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <BarChart3 className="text-blue-600" size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Estadísticas</h2>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Gráfico de Dona con Transacciones - TU COMPONENTE ORIGINAL */}
+          <div className="lg:col-span-2">
+            <DonutChart 
+              data={totals.expensesByCategory} 
+              title="Gastos por Categoría"
+              transactions={transactions}
+            />
           </div>
 
-          {/* Proporción visual */}
-          <div className="mb-6">
-            <h4 className="font-medium text-gray-800 mb-3">Proporción Ingresos vs Gastos</h4>
-            <div className="relative bg-gray-200 rounded-full h-4 overflow-hidden">
-              <div 
-                className="bg-green-500 h-full rounded-l-full transition-all duration-1000"
-                style={{ width: `${totalIngresos > 0 ? (totalIngresos / (totalIngresos + totalGastos)) * 100 : 0}%` }}
-              ></div>
-              <div 
-                className="bg-red-500 h-full absolute top-0 right-0 rounded-r-full transition-all duration-1000"
-                style={{ width: `${totalGastos > 0 ? (totalGastos / (totalIngresos + totalGastos)) * 100 : 0}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between text-sm text-gray-600 mt-2">
-              <span>Ingresos: {totalIngresos > 0 ? ((totalIngresos / (totalIngresos + totalGastos)) * 100).toFixed(1) : 0}%</span>
-              <span>Gastos: {totalGastos > 0 ? ((totalGastos / (totalIngresos + totalGastos)) * 100).toFixed(1) : 0}%</span>
-            </div>
-          </div>
+          {/* Panel de Acciones - TU DISEÑO ORIGINAL */}
+          <div className="lg:col-span-1 space-y-6">
+            <button
+              onClick={() => {
+                console.log('🔓 Abriendo modal de transacción')
+                setIsQuickFormOpen(true)
+              }}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+            >
+              <span>💰</span>
+              <span>Nueva Transacción</span>
+            </button>
 
-          {/* Gastos por categoría */}
-          {Object.keys(gastosPorCategoria).length > 0 && (
-            <div>
-              <h4 className="font-medium text-gray-800 mb-3">Gastos por Categoría</h4>
-              <div className="space-y-2">
-                {Object.entries(gastosPorCategoria)
-                  .sort(([,a], [,b]) => b - a)
-                  .slice(0, 5)
-                  .map(([categoria, monto]) => {
-                    const porcentaje = (monto / totalGastos) * 100;
-                    return (
-                      <div key={categoria}>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="capitalize">{categoria}</span>
-                          <span>${monto.toLocaleString()}</span>
+            {/* Transacciones Recientes - TU DISEÑO ORIGINAL */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <span className="text-gray-600 text-sm">📋</span>
+                  </div>
+                  <h3 className="text-base font-bold text-gray-800">
+                    Recientes ({transactions.length})
+                  </h3>
+                </div>
+                
+                {transactions.length > 0 && (
+                  <button 
+                    onClick={() => {
+                      console.log('🔓 Abriendo modal desde botón "Agregar"')
+                      setIsQuickFormOpen(true)
+                    }}
+                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    ➕ Agregar
+                  </button>
+                )}
+              </div>
+
+              {transactions.length === 0 ? (
+                <div className="text-center py-6">
+                  <span className="text-2xl mb-2 block">📭</span>
+                  <p className="text-gray-600 text-sm">
+                    Sin transacciones
+                  </p>
+                  <button
+                    onClick={() => {
+                      console.log('🔓 Abriendo modal para primera transacción')
+                      setIsQuickFormOpen(true)
+                    }}
+                    className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  >
+                    ➕ Agregar primera transacción
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {transactions.map((transaction, index) => (
+                    <div 
+                      key={transaction.id} 
+                      className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors border-l-4"
+                      style={{
+                        borderLeftColor: transaction.type === 'ingreso' ? '#10b981' : '#ef4444'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3 flex-1">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                            transaction.type === 'ingreso' 
+                              ? "bg-gradient-to-br from-green-50 to-green-100" 
+                              : "bg-gradient-to-br from-red-50 to-red-100"
+                          }`}>
+                            <span className="text-sm">
+                              {transaction.type === 'ingreso' ? '💰' : '💸'}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 truncate">
+                              {transaction.description || 'Sin descripción'}
+                            </p>
+                            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                              <span className={`px-2 py-1 rounded-full ${
+                                transaction.type === 'ingreso' 
+                                  ? "bg-green-100 text-green-700" 
+                                  : "bg-red-100 text-red-700"
+                              }`}>
+                                {transaction.category}
+                              </span>
+                              <span>•</span>
+                              <span>{new Date(transaction.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}</span>
+                              {index === 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-blue-600 font-medium">Nuevo</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div className="bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-500"
-                            style={{ width: `${porcentaje}%` }}
-                          ></div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-sm font-bold ${
+                            transaction.type === 'ingreso' ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {transaction.type === 'ingreso' ? '+' : '-'}€{(transaction.amount || 0).toFixed(2)}
+                          </span>
+                          
+                          <button 
+                            onClick={() => handleDelete(transaction.id)}
+                            className="w-6 h-6 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors"
+                            title="Eliminar transacción"
+                          >
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9zM4 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 112 0v3a1 1 0 11-2 0V9zm4 0a1 1 0 112 0v3a1 1 0 11-2 0V9z" clipRule="evenodd" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                    );
-                  })}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Módulo de Objetivos */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 lg:col-span-2 xl:col-span-1">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Target className="text-purple-600" size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Objetivos</h2>
-          </div>
+        {/* TODOS TUS MÓDULOS ORIGINALES */}
+        
+        {/* Módulo de Presupuestos */}
+        <div className="mb-8 mt-5">
+          <Budgets transactions={transactions} />
+        </div>
 
-          {objetivos.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Target size={48} className="mx-auto mb-3 opacity-50" />
-              <p>No tienes objetivos definidos</p>
-              <p className="text-sm">Cambia a vista móvil para crearlos</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {objetivos.map((objetivo) => {
-                const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
-                return (
-                  <div key={objetivo.id} className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="font-medium text-purple-800">{objetivo.nombre}</span>
-                      <span className="text-sm text-purple-600">
-                        ${objetivo.actual.toLocaleString()} / ${objetivo.meta.toLocaleString()}
+        {/* Transacciones Recurrentes */}
+        <div className="mb-8">
+          <RecurringTransactions />
+        </div>
+
+        {/* Metas de Ahorro */}
+        <div className="mb-8">
+          <SavingsGoals />
+        </div>
+
+        {/* Top Transacciones de Gastos - TU MÓDULO ORIGINAL COMPLETO */}
+        {topExpenseTransactions.length > 0 && (
+          <div className="mb-8">
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+              <div className="flex items-center space-x-3 mb-6">
+                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                  <span className="text-yellow-600">🏆</span>
+                </div>
+                <h2 className="text-xl font-bold text-gray-800">
+                  Mayores Gastos
+                </h2>
+              </div>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topExpenseTransactions.map((transaction, index) => (
+                  <div key={transaction.id} className="bg-gradient-to-br from-white to-red-50 rounded-xl p-4 border border-red-100 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-2xl">
+                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '💸'}
+                      </span>
+                      <span className="text-lg font-bold text-red-600">
+                        €{transaction.amount.toFixed(2)}
                       </span>
                     </div>
-                    <div className="bg-purple-200 rounded-full h-3">
-                      <div 
-                        className="bg-purple-600 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${progreso}%` }}
-                      ></div>
+                    
+                    <div className="mb-3">
+                      <h3 className="text-base font-semibold text-gray-800 truncate mb-1">
+                        {transaction.description || 'Sin descripción'}
+                      </h3>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                          {transaction.category}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(transaction.date).toLocaleDateString('es-ES', { 
+                            day: '2-digit', 
+                            month: '2-digit', 
+                            year: '2-digit' 
+                          })}
+                        </span>
+                      </div>
                     </div>
-                    <p className="text-xs text-purple-600 mt-1">{progreso.toFixed(1)}% completado</p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
 
-        {/* Módulo de Transacciones Recientes */}
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-6 lg:col-span-2">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="bg-gray-100 p-3 rounded-lg">
-              <CreditCard className="text-gray-600" size={24} />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">Transacciones Recientes</h2>
-          </div>
+                    <div className="mt-2">
+                      <div className="bg-gray-200 rounded-full h-2">
+                        <div 
+                          className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full transition-all duration-200"
+                          style={{ 
+                            width: `${(transaction.amount / topExpenseTransactions[0].amount) * 100}%` 
+                          }}
+                        ></div>
+                      </div>
+                      <p className="text-xs mt-1 text-gray-600">
+                        {((transaction.amount / topExpenseTransactions[0].amount) * 100).toFixed(1)}% del mayor gasto
+                      </p>
+                    </div>
 
-          <div className="space-y-3 max-h-80 overflow-y-auto">
-            {[...ingresos, ...gastos]
-              .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-              .slice(0, 10)
-              .map((transaccion) => (
-                <div key={transaccion.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                  <div>
-                    <p className="font-medium text-gray-800">{transaccion.descripcion}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(transaccion.fecha).toLocaleDateString('es-ES')} • {transaccion.categoria}
-                    </p>
+                    <div className="mt-3 flex justify-end">
+                      <button 
+                        onClick={() => handleDelete(transaction.id)}
+                        className="text-gray-400 hover:text-red-500 p-1 rounded transition-colors"
+                        title="Eliminar transacción"
+                      >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9zM4 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 112 0v3a1 1 0 11-2 0V9zm4 0a1 1 0 112 0v3a1 1 0 11-2 0V9z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                  <span className={`font-bold text-lg ${transaccion.monto > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {transaccion.monto > 0 ? '+' : '-'}${Math.abs(transaccion.monto).toLocaleString()}
-                  </span>
+                ))}
+              </div>
+
+              {topExpenseTransactions.length > 0 && (
+                <div className="mt-6 bg-red-50 rounded-lg p-4 border border-red-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-semibold text-red-800 mb-1">
+                        📊 Análisis de Gastos Grandes
+                      </h4>
+                      <p className="text-xs text-red-700">
+                        Estos {topExpenseTransactions.length} gastos representan €{topExpenseTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)} del total
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-red-600">
+                        {((topExpenseTransactions.reduce((sum, t) => sum + t.amount, 0) / totals.totalExpenses) * 100).toFixed(1)}%
+                      </div>
+                      <div className="text-xs text-red-600">del total gastado</div>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
+            </div>
           </div>
+        )}
+
+        {/* Gráfico de Tendencias Temporales - TU COMPONENTE ORIGINAL */}
+        <div className="mb-8">
+          <TrendsChart />
         </div>
       </div>
+
+      {/* Modal de Transacción Rápida - TU COMPONENTE ORIGINAL */}
+      {isQuickFormOpen && (
+        <>
+          {console.log('🎭 Pasando props a QuickTransactionForm:', {
+            isOpen: isQuickFormOpen,
+            addExpense: typeof addExpense,
+            addExpenseFunction: addExpense,
+            onClose: typeof handleCloseModal,
+            onTransactionAdded: typeof handleTransactionAdded
+          })}
+          <QuickTransactionForm 
+            isOpen={isQuickFormOpen}
+            onClose={handleCloseModal}
+            onTransactionAdded={handleTransactionAdded}
+            addExpense={addExpense}
+            debug={true}
+            debugMessage="Dashboard → QuickTransactionForm"
+          />
+        </>
+      )}
+
+      {/* Componente PWA - TU COMPONENTE ORIGINAL */}
+      <InstallPWA />
     </div>
   );
 };
@@ -522,9 +615,7 @@ const AppHeader = ({ title, showBack, onBack }) => (
   </div>
 );
 
-// [Aquí van todas las pantallas móviles - las mantengo igual que antes pero las adapto]
-
-// Pantalla Dashboard móvil
+// Pantalla Dashboard móvil (usando localStorage para datos móviles)
 const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos }) => {
   const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
@@ -630,9 +721,7 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
   );
 };
 
-// [Las demás pantallas móviles se mantienen igual - IngresosScreen, GastosScreen, etc.]
-// Por brevedad, voy a incluir solo una más como ejemplo
-
+// Pantalla de Ingresos móvil
 const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
   const [nuevoIngreso, setNuevoIngreso] = useState({ 
     descripcion: '', 
@@ -663,7 +752,7 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
 
   return (
     <div className="p-4 space-y-6 animate-slideInRight">
-      {/* Formulario y lista igual que antes */}
+      {/* Total */}
       <div className="bg-green-50 p-4 rounded-xl border border-green-200">
         <div className="text-center">
           <p className="text-sm text-green-600">Total de Ingresos</p>
@@ -671,7 +760,7 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
         </div>
       </div>
 
-      {/* Formulario simplificado */}
+      {/* Formulario */}
       <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Nuevo Ingreso</h3>
         <div className="space-y-4">
@@ -680,14 +769,14 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
             placeholder="Descripción"
             value={nuevoIngreso.descripcion}
             onChange={(e) => setNuevoIngreso({...nuevoIngreso, descripcion: e.target.value})}
-            className="w-full p-3 border border-gray-300 rounded-lg"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
           <input
             type="number"
             placeholder="Monto"
             value={nuevoIngreso.monto}
             onChange={(e) => setNuevoIngreso({...nuevoIngreso, monto: e.target.value})}
-            className="w-full p-3 border border-gray-300 rounded-lg"
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
           />
           <button
             onClick={agregarIngreso}
@@ -700,12 +789,13 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
 
       {/* Lista */}
       <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-gray-800">Mis Ingresos ({ingresos.length})</h3>
         {ingresos.map((ingreso) => (
           <div key={ingreso.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
             <div className="flex justify-between items-center">
               <div>
                 <p className="font-medium text-gray-800">{ingreso.descripcion}</p>
-                <p className="text-sm text-gray-500">{ingreso.fecha}</p>
+                <p className="text-sm text-gray-500">{ingreso.fecha} • {ingreso.categoria}</p>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-green-600">+${ingreso.monto.toLocaleString()}</span>
@@ -724,11 +814,313 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
   );
 };
 
-// Vista móvil completa
-const MobileDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos }) => {
-  const [activeScreen, setActiveScreen] = useState('dashboard');
+// Pantalla de Gastos móvil
+const MobileGastosScreen = ({ gastos, setGastos }) => {
+  const [nuevoGasto, setNuevoGasto] = useState({ 
+    descripcion: '', 
+    monto: '', 
+    categoria: 'alimentacion',
+    fecha: new Date().toISOString().split('T')[0]
+  });
 
-  // Detectar shortcuts de URL
+  const agregarGasto = () => {
+    if (nuevoGasto.descripcion && nuevoGasto.monto && nuevoGasto.fecha) {
+      const nuevo = {
+        id: Date.now(),
+        descripcion: nuevoGasto.descripcion,
+        monto: -Math.abs(parseFloat(nuevoGasto.monto)),
+        fecha: nuevoGasto.fecha,
+        categoria: nuevoGasto.categoria
+      };
+      setGastos([nuevo, ...gastos]);
+      setNuevoGasto({ descripcion: '', monto: '', categoria: 'alimentacion', fecha: new Date().toISOString().split('T')[0] });
+    }
+  };
+
+  const eliminarGasto = (id) => {
+    setGastos(gastos.filter(gasto => gasto.id !== id));
+  };
+
+  const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
+
+  return (
+    <div className="p-4 space-y-6 animate-slideInRight">
+      {/* Total */}
+      <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+        <div className="text-center">
+          <p className="text-sm text-red-600">Total de Gastos</p>
+          <p className="text-2xl font-bold text-red-700">${totalGastos.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Formulario */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <h3 className="text-lg font-semibold text-gray-800 mb-4">Nuevo Gasto</h3>
+        <div className="space-y-4">
+          <input
+            type="text"
+            placeholder="Descripción"
+            value={nuevoGasto.descripcion}
+            onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          />
+          <input
+            type="number"
+            placeholder="Monto"
+            value={nuevoGasto.monto}
+            onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
+            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+          />
+          <button
+            onClick={agregarGasto}
+            className="w-full bg-red-600 text-white p-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
+          >
+            Agregar Gasto
+          </button>
+        </div>
+      </div>
+
+      {/* Lista */}
+      <div className="space-y-3">
+        <h3 className="text-lg font-semibold text-gray-800">Mis Gastos ({gastos.length})</h3>
+        {gastos.map((gasto) => (
+          <div key={gasto.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div>
+                <p className="font-medium text-gray-800">{gasto.descripcion}</p>
+                <p className="text-sm text-gray-500">{gasto.fecha} • {gasto.categoria}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-red-600">-${Math.abs(gasto.monto).toLocaleString()}</span>
+                <button
+                  onClick={() => eliminarGasto(gasto.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// Pantalla de Estadísticas móvil
+const MobileEstadisticasScreen = ({ ingresos, gastos, objetivos }) => {
+  const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
+  const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
+  const balance = totalIngresos - totalGastos;
+
+  const todasTransacciones = [...ingresos, ...gastos]
+    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+  return (
+    <div className="p-4 space-y-6 animate-slideInRight">
+      {/* Resumen financiero */}
+      <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
+        <h3 className="text-lg font-semibold text-blue-800 mb-4">Resumen Financiero</h3>
+        
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Total Ingresos</p>
+              <p className="text-2xl font-bold text-green-600">${totalIngresos.toLocaleString()}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Total Gastos</p>
+              <p className="text-2xl font-bold text-red-600">${totalGastos.toLocaleString()}</p>
+            </div>
+          </div>
+          
+          <hr className="border-blue-200" />
+          
+          <div className="text-center">
+            <p className="text-sm text-gray-600">Balance Final</p>
+            <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {balance >= 0 ? '+' : ''}${balance.toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Historial completo */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <h4 className="font-medium text-gray-800 mb-4">Todas las Transacciones ({todasTransacciones.length})</h4>
+        {todasTransacciones.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <BarChart3 size={48} className="mx-auto mb-3 opacity-50" />
+            <p>No hay transacciones registradas</p>
+            <p className="text-sm">¡Comienza agregando ingresos y gastos!</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {todasTransacciones.map((transaccion) => (
+              <div key={transaccion.id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium text-gray-800">{transaccion.descripcion}</p>
+                    <p className="text-sm text-gray-500">
+                      {new Date(transaccion.fecha).toLocaleDateString('es-ES')} • {transaccion.categoria}
+                    </p>
+                  </div>
+                  <span className={`font-bold ${transaccion.monto > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {transaccion.monto > 0 ? '+' : '-'}${Math.abs(transaccion.monto).toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Pantalla de Perfil móvil
+const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
+  const [nuevoObjetivo, setNuevoObjetivo] = useState({ nombre: '', meta: '', actual: 0 });
+  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+
+  const agregarObjetivo = () => {
+    if (nuevoObjetivo.nombre && nuevoObjetivo.meta) {
+      const nuevo = {
+        id: Date.now(),
+        nombre: nuevoObjetivo.nombre,
+        meta: parseFloat(nuevoObjetivo.meta),
+        actual: 0
+      };
+      setObjetivos([...objetivos, nuevo]);
+      setNuevoObjetivo({ nombre: '', meta: '', actual: 0 });
+      setMostrarFormulario(false);
+    }
+  };
+
+  const eliminarObjetivo = (id) => {
+    setObjetivos(objetivos.filter(obj => obj.id !== id));
+  };
+
+  return (
+    <div className="p-4 space-y-6 animate-slideInRight">
+      {/* Header del perfil */}
+      <div className="text-center">
+        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+          <User size={48} className="text-white" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-800">Mi Perfil Financiero</h2>
+        <p className="text-gray-600">Gestiona tus objetivos y configuración</p>
+      </div>
+
+      {/* Gestión de objetivos */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-800">Mis Objetivos</h3>
+          <button
+            onClick={() => setMostrarFormulario(!mostrarFormulario)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Nuevo Objetivo
+          </button>
+        </div>
+
+        {/* Formulario nuevo objetivo */}
+        {mostrarFormulario && (
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="space-y-3">
+              <input
+                type="text"
+                placeholder="Nombre del objetivo"
+                value={nuevoObjetivo.nombre}
+                onChange={(e) => setNuevoObjetivo({...nuevoObjetivo, nombre: e.target.value})}
+                className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <input
+                type="number"
+                placeholder="Meta en $"
+                value={nuevoObjetivo.meta}
+                onChange={(e) => setNuevoObjetivo({...nuevoObjetivo, meta: e.target.value})}
+                className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={agregarObjetivo}
+                  className="flex-1 bg-blue-600 text-white p-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                >
+                  Crear Objetivo
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarFormulario(false);
+                    setNuevoObjetivo({ nombre: '', meta: '', actual: 0 });
+                  }}
+                  className="px-6 bg-gray-500 text-white p-3 rounded-lg font-medium hover:bg-gray-600 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Lista de objetivos */}
+        {objetivos.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">
+            <Target size={48} className="mx-auto mb-3 opacity-50" />
+            <p>No tienes objetivos financieros aún</p>
+            <p className="text-sm">¡Crea tu primer objetivo arriba!</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {objetivos.map((objetivo) => {
+              const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
+              return (
+                <div key={objetivo.id} className="p-4 bg-gray-50 rounded-lg">
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-800">{objetivo.nombre}</h4>
+                      <p className="text-sm text-gray-600">
+                        Meta: ${objetivo.meta.toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => eliminarObjetivo(objetivo.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                  
+                  <div className="mb-2">
+                    <div className="flex justify-between text-sm text-gray-600 mb-1">
+                      <span>Progreso: {progreso.toFixed(1)}%</span>
+                      <span>${objetivo.actual.toLocaleString()} / ${objetivo.meta.toLocaleString()}</span>
+                    </div>
+                    <div className="bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${progreso}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Vista móvil completa
+const MobileDashboard = () => {
+  const [activeScreen, setActiveScreen] = useState('dashboard');
+  const [ingresos, setIngresos] = useLocalStorage('mobile_ingresos', []);
+  const [gastos, setGastos] = useLocalStorage('mobile_gastos', []);
+  const [objetivos, setObjetivos] = useLocalStorage('mobile_objetivos', []);
+
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const screen = urlParams.get('screen');
@@ -745,7 +1137,12 @@ const MobileDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, 
         return <MobileDashboardScreen setActiveScreen={setActiveScreen} {...screenProps} />;
       case 'ingresos':
         return <MobileIngresosScreen ingresos={ingresos} setIngresos={setIngresos} />;
-      // Las demás pantallas se mantienen igual...
+      case 'gastos':
+        return <MobileGastosScreen gastos={gastos} setGastos={setGastos} />;
+      case 'estadisticas':
+        return <MobileEstadisticasScreen {...screenProps} />;
+      case 'perfil':
+        return <MobilePerfilScreen objetivos={objetivos} setObjetivos={setObjetivos} />;
       default:
         return <MobileDashboardScreen setActiveScreen={setActiveScreen} {...screenProps} />;
     }
@@ -787,11 +1184,7 @@ const MobileDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, 
 // ===========================================
 
 const HybridDashboardApp = () => {
-  const [ingresos, setIngresos] = useLocalStorage('ingresos', []);
-  const [gastos, setGastos] = useLocalStorage('gastos', []);
-  const [objetivos, setObjetivos] = useLocalStorage('objetivos', []);
   const [forceView, setForceView] = useLocalStorage('preferredView', null);
-  
   const context = useViewContext();
 
   // Decidir qué vista mostrar
@@ -815,23 +1208,9 @@ const HybridDashboardApp = () => {
 
       {/* Renderizar la vista apropiada */}
       {shouldShowMobile ? (
-        <MobileDashboard 
-          ingresos={ingresos}
-          setIngresos={setIngresos}
-          gastos={gastos}
-          setGastos={setGastos}
-          objetivos={objetivos}
-          setObjetivos={setObjetivos}
-        />
+        <MobileDashboard />
       ) : (
-        <WebDashboard 
-          ingresos={ingresos}
-          setIngresos={setIngresos}
-          gastos={gastos}
-          setGastos={setGastos}
-          objetivos={objetivos}
-          setObjetivos={setObjetivos}
-        />
+        <WebDashboard />
       )}
 
       {/* Estilos para animaciones */}
