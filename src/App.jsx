@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
+
+// Contexto y componentes de auth
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import Login from './pages/Login';
+import Register from './pages/Register';
 
 // Hook mejorado para localStorage con sincronización automática
 const useLocalStorage = (key, initialValue) => {
-  // Estado inicial
   const [storedValue, setStoredValue] = useState(() => {
     try {
       const item = window.localStorage.getItem(key);
@@ -14,28 +19,19 @@ const useLocalStorage = (key, initialValue) => {
     }
   });
 
-  // Función para actualizar valor
   const setValue = (value) => {
     try {
-      // Guardar en estado
       setStoredValue(value);
-      
-      // Guardar en localStorage
       window.localStorage.setItem(key, JSON.stringify(value));
-      
-      // Disparar evento personalizado para sincronizar otros componentes
       window.dispatchEvent(new CustomEvent('localStorageChange', {
         detail: { key, value }
       }));
-      
       console.log(`✅ LocalStorage updated: ${key}`, value);
-      
     } catch (error) {
       console.error(`Error setting localStorage key "${key}":`, error);
     }
   };
 
-  // Escuchar cambios de localStorage desde otros componentes
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.detail.key === key) {
@@ -44,10 +40,6 @@ const useLocalStorage = (key, initialValue) => {
       }
     };
 
-    // Escuchar nuestro evento personalizado
-    window.addEventListener('localStorageChange', handleStorageChange);
-    
-    // También escuchar cambios nativos de localStorage (desde otras pestañas)
     const handleNativeStorageChange = (e) => {
       if (e.key === key && e.newValue !== null) {
         try {
@@ -59,10 +51,10 @@ const useLocalStorage = (key, initialValue) => {
         }
       }
     };
-    
+
+    window.addEventListener('localStorageChange', handleStorageChange);
     window.addEventListener('storage', handleNativeStorageChange);
 
-    // Cleanup
     return () => {
       window.removeEventListener('localStorageChange', handleStorageChange);
       window.removeEventListener('storage', handleNativeStorageChange);
@@ -116,6 +108,12 @@ const datosEjemplo = {
   ]
 };
 
+// Componente ProtectedRoute
+function ProtectedRoute({ children }) {
+  const { currentUser } = useAuth();
+  return currentUser ? children : <Navigate to="/login" />;
+}
+
 // Selector de vista manual
 const ViewToggle = ({ currentView, onViewChange, context }) => (
   <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2">
@@ -148,6 +146,36 @@ const ViewToggle = ({ currentView, onViewChange, context }) => (
     </div>
   </div>
 );
+
+// Botón de logout
+const LogoutButton = () => {
+  const { logout, currentUser } = useAuth();
+  
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      console.error('Error al cerrar sesión:', error);
+    }
+  };
+
+  return (
+    <div className="fixed top-4 left-4 z-50">
+      <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2">
+        <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+          <span>👤</span>
+          <span>{currentUser?.email}</span>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="w-full bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm transition-colors"
+        >
+          🚪 Cerrar Sesión
+        </button>
+      </div>
+    </div>
+  );
+};
 
 // ===========================================
 // VISTA WEB/DESKTOP
@@ -676,7 +704,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
 };
 
 // ===========================================
-// VISTA MÓVIL
+// VISTA MÓVIL (mismos componentes del código anterior)
 // ===========================================
 
 const BottomNavigation = ({ activeScreen, setActiveScreen }) => {
@@ -784,7 +812,6 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
   );
 };
 
-// Pantallas móviles CON categorías
 const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
   const [nuevo, setNuevo] = useState({ descripcion: '', monto: '', categoria: 'trabajo' });
 
@@ -926,7 +953,6 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
   const balance = totalIngresos - totalGastos;
 
-  // Gastos por categoría para gráfico móvil
   const gastosPorCategoria = gastos.reduce((acc, gasto) => {
     acc[gasto.categoria] = (acc[gasto.categoria] || 0) + Math.abs(gasto.monto);
     return acc;
@@ -955,7 +981,6 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
         </div>
       </div>
 
-      {/* Gráfico de dona móvil */}
       {Object.keys(gastosPorCategoria).length > 0 && (
         <div className="bg-white p-6 rounded-xl shadow-sm">
           <h3 className="font-semibold mb-4">🍩 Gastos por Categoría</h3>
@@ -1013,11 +1038,10 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
             </ResponsiveContainer>
           </div>
           
-          {/* Lista de categorías */}
           <div className="space-y-2">
             {Object.entries(gastosPorCategoria)
               .sort(([,a], [,b]) => b - a)
-              .slice(0, 4) // Solo top 4 en móvil
+              .slice(0, 4)
               .map(([categoria, monto]) => {
                 const porcentaje = (monto / totalGastos) * 100;
                 const emoji = {
@@ -1154,10 +1178,10 @@ const MobileDashboard = () => {
 };
 
 // ===========================================
-// COMPONENTE PRINCIPAL
+// COMPONENTE PRINCIPAL CON ROUTING
 // ===========================================
 
-const App = () => {
+const DashboardWithAuth = () => {
   const [forceView, setForceView] = useLocalStorage('preferredView', null);
   const [ingresos, setIngresos] = useLocalStorage('ingresos', datosEjemplo.ingresos);
   const [gastos, setGastos] = useLocalStorage('gastos', datosEjemplo.gastos);
@@ -1176,6 +1200,8 @@ const App = () => {
 
   return (
     <>
+      <LogoutButton />
+      
       <ViewToggle 
         currentView={currentView} 
         onViewChange={handleViewChange}
@@ -1197,5 +1223,24 @@ const App = () => {
     </>
   );
 };
+
+// Componente principal de la app
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/" element={
+            <ProtectedRoute>
+              <DashboardWithAuth />
+            </ProtectedRoute>
+          } />
+        </Routes>
+      </Router>
+    </AuthProvider>
+  );
+}
 
 export default App;
