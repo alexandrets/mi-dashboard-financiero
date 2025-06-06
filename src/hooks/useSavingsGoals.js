@@ -1,166 +1,174 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react';
 import { 
   collection, 
   addDoc, 
-  deleteDoc, 
   updateDoc, 
+  deleteDoc, 
   doc, 
-  onSnapshot, 
   query, 
-  where
-} from 'firebase/firestore'
-import { db } from '../services/firebase'
-import { useAuth } from '../contexts/AuthContext'
+  where, 
+  onSnapshot, 
+  orderBy, 
+  serverTimestamp 
+} from 'firebase/firestore';
+import { db } from '../services/firebase';
+import { useAuth } from '../contexts/AuthContext';
 
 export const useSavingsGoals = () => {
-  const [goals, setGoals] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const { currentUser } = useAuth()
+  const [goals, setGoals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { currentUser } = useAuth();
 
-  // Cargar metas de la base de datos
+  // Escuchar cambios en tiempo real
   useEffect(() => {
     if (!currentUser) {
-      setGoals([])
-      setLoading(false)
-      return
+      setGoals([]);
+      setLoading(false);
+      return;
     }
 
-    setLoading(true)
-    
-    // Query simple SIN orderBy - no necesita índice
+    setLoading(true);
+    setError(null);
+
     const q = query(
       collection(db, 'savingsGoals'),
-      where('userId', '==', currentUser.uid)
-    )
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
 
-    const unsubscribe = onSnapshot(q, 
+    const unsubscribe = onSnapshot(
+      q,
       (querySnapshot) => {
-        const goalsData = []
-        querySnapshot.forEach((doc) => {
-          goalsData.push({
+        try {
+          const goalsData = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-          })
-        })
-        
-        // Ordenar en el cliente por fecha (más reciente primero)
-        goalsData.sort((a, b) => {
-          const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt || 0)
-          const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt || 0)
-          return dateB - dateA
-        })
-        
-        setGoals(goalsData)
-        setLoading(false)
-        setError(null)
+          }));
+          setGoals(goalsData);
+          setLoading(false);
+        } catch (err) {
+          console.error('Error fetching goals:', err);
+          setError('Error al cargar las metas');
+          setLoading(false);
+        }
       },
-      (error) => {
-        console.error('Error loading savings goals:', error)
-        setError('Error al cargar las metas de ahorro: ' + error.message)
-        setLoading(false)
+      (err) => {
+        console.error('Error in goals listener:', err);
+        setError('Error de conexión');
+        setLoading(false);
       }
-    )
+    );
 
-    return () => unsubscribe()
-  }, [currentUser])
+    return () => unsubscribe();
+  }, [currentUser]);
 
   // Agregar nueva meta
   const addGoal = async (goalData) => {
-    if (!currentUser) {
-      throw new Error('Usuario no autenticado')
-    }
+    if (!currentUser) throw new Error('Usuario no autenticado');
 
     try {
-      const newGoal = {
+      const docRef = await addDoc(collection(db, 'savingsGoals'), {
         ...goalData,
         userId: currentUser.uid,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-
-      await addDoc(collection(db, 'savingsGoals'), newGoal)
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+      
+      console.log('Meta creada con ID:', docRef.id);
+      return docRef.id;
     } catch (error) {
-      console.error('Error adding savings goal:', error)
-      throw new Error('Error al crear la meta: ' + error.message)
+      console.error('Error creating goal:', error);
+      throw new Error('Error al crear la meta');
     }
-  }
+  };
 
   // Actualizar meta existente
   const updateGoal = async (goalId, updates) => {
-    if (!currentUser) {
-      throw new Error('Usuario no autenticado')
-    }
+    if (!currentUser) throw new Error('Usuario no autenticado');
 
     try {
-      const goalRef = doc(db, 'savingsGoals', goalId)
+      const goalRef = doc(db, 'savingsGoals', goalId);
       await updateDoc(goalRef, {
         ...updates,
-        updatedAt: new Date()
-      })
+        updatedAt: serverTimestamp()
+      });
+      
+      console.log('Meta actualizada:', goalId);
     } catch (error) {
-      console.error('Error updating savings goal:', error)
-      throw new Error('Error al actualizar la meta: ' + error.message)
+      console.error('Error updating goal:', error);
+      throw new Error('Error al actualizar la meta');
     }
-  }
+  };
 
   // Eliminar meta
   const deleteGoal = async (goalId) => {
-    if (!currentUser) {
-      throw new Error('Usuario no autenticado')
-    }
-
-    if (!window.confirm('¿Estás seguro de que quieres eliminar esta meta?')) {
-      return
-    }
+    if (!currentUser) throw new Error('Usuario no autenticado');
 
     try {
-      await deleteDoc(doc(db, 'savingsGoals', goalId))
-    } catch (error) {
-      console.error('Error deleting savings goal:', error)
-      throw new Error('Error al eliminar la meta: ' + error.message)
-    }
-  }
-
-  // Agregar ahorros a una meta
-  const addSavings = async (goalId, amount) => {
-    if (!currentUser) {
-      throw new Error('Usuario no autenticado')
-    }
-
-    try {
-      const goal = goals.find(g => g.id === goalId)
-      if (!goal) {
-        throw new Error('Meta no encontrada')
-      }
-
-      const newSavedAmount = Math.min(goal.savedAmount + amount, goal.targetAmount)
+      const goalRef = doc(db, 'savingsGoals', goalId);
+      await deleteDoc(goalRef);
       
-      await updateGoal(goalId, {
-        savedAmount: newSavedAmount
-      })
+      console.log('Meta eliminada:', goalId);
     } catch (error) {
-      console.error('Error adding savings:', error)
-      throw new Error('Error al agregar ahorros: ' + error.message)
+      console.error('Error deleting goal:', error);
+      throw new Error('Error al eliminar la meta');
     }
-  }
+  };
+
+  // Añadir dinero a una meta
+  const addSavings = async (goalId, amount) => {
+    if (!currentUser) throw new Error('Usuario no autenticado');
+
+    try {
+      const goal = goals.find(g => g.id === goalId);
+      if (!goal) throw new Error('Meta no encontrada');
+
+      const newSavedAmount = goal.savedAmount + amount;
+      
+      const goalRef = doc(db, 'savingsGoals', goalId);
+      await updateDoc(goalRef, {
+        savedAmount: newSavedAmount,
+        updatedAt: serverTimestamp()
+      });
+      
+      console.log('Ahorros añadidos a la meta:', goalId, amount);
+    } catch (error) {
+      console.error('Error adding savings:', error);
+      throw new Error('Error al agregar ahorros');
+    }
+  };
 
   // Funciones de estadísticas
   const getTotalSaved = () => {
-    return goals.reduce((total, goal) => total + (goal.savedAmount || 0), 0)
-  }
+    return goals.reduce((total, goal) => total + (goal.savedAmount || 0), 0);
+  };
 
   const getTotalTarget = () => {
-    return goals.reduce((total, goal) => total + (goal.targetAmount || 0), 0)
-  }
+    return goals.reduce((total, goal) => total + (goal.targetAmount || 0), 0);
+  };
 
   const getCompletedGoals = () => {
-    return goals.filter(goal => (goal.savedAmount || 0) >= (goal.targetAmount || 0))
-  }
+    return goals.filter(goal => (goal.savedAmount || 0) >= (goal.targetAmount || 0));
+  };
 
   const getActiveGoals = () => {
-    return goals.filter(goal => (goal.savedAmount || 0) < (goal.targetAmount || 0))
-  }
+    const today = new Date().toISOString().split('T')[0];
+    return goals.filter(goal => {
+      const isCompleted = (goal.savedAmount || 0) >= (goal.targetAmount || 0);
+      const isNotExpired = !goal.targetDate || goal.targetDate >= today;
+      return !isCompleted && isNotExpired;
+    });
+  };
+
+  const getOverdueGoals = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return goals.filter(goal => {
+      const isCompleted = (goal.savedAmount || 0) >= (goal.targetAmount || 0);
+      const isExpired = goal.targetDate && goal.targetDate < today;
+      return !isCompleted && isExpired;
+    });
+  };
 
   return {
     goals,
@@ -173,6 +181,7 @@ export const useSavingsGoals = () => {
     getTotalSaved,
     getTotalTarget,
     getCompletedGoals,
-    getActiveGoals
-  }
-}
+    getActiveGoals,
+    getOverdueGoals
+  };
+};

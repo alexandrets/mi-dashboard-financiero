@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Target, Plus, Edit2, Trash2, Calendar, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const SavingsGoalCard = ({ goal, onUpdate, onDelete, onAddSavings }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -114,13 +113,9 @@ const SavingsGoalCard = ({ goal, onUpdate, onDelete, onAddSavings }) => {
       {/* Header con estado */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-2">
-          {isCompleted ? (
-            <CheckCircle className="w-6 h-6 text-green-600" />
-          ) : isOverdue ? (
-            <AlertTriangle className="w-6 h-6 text-red-600" />
-          ) : (
-            <Target className="w-6 h-6 text-purple-600" />
-          )}
+          <span className="text-2xl">
+            {isCompleted ? '✅' : isOverdue ? '⚠️' : '🎯'}
+          </span>
           
           {isEditing ? (
             <input
@@ -144,15 +139,17 @@ const SavingsGoalCard = ({ goal, onUpdate, onDelete, onAddSavings }) => {
                 onClick={() => setIsEditing(true)}
                 disabled={isSubmitting}
                 className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Editar"
               >
-                <Edit2 className="w-4 h-4" />
+                ✏️
               </button>
               <button
                 onClick={handleDelete}
                 disabled={isSubmitting}
                 className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                title="Eliminar"
               >
-                <Trash2 className="w-4 h-4" />
+                🗑️
               </button>
             </>
           )}
@@ -163,17 +160,17 @@ const SavingsGoalCard = ({ goal, onUpdate, onDelete, onAddSavings }) => {
       <div className="mb-4">
         {isCompleted ? (
           <div className="flex items-center gap-2 text-green-700 bg-green-100 px-3 py-1 rounded-full text-sm">
-            <CheckCircle className="w-4 h-4" />
+            <span>✅</span>
             <span className="font-semibold">¡Meta Completada!</span>
           </div>
         ) : isOverdue ? (
           <div className="flex items-center gap-2 text-red-700 bg-red-100 px-3 py-1 rounded-full text-sm">
-            <AlertTriangle className="w-4 h-4" />
+            <span>⚠️</span>
             <span className="font-semibold">Vencida</span>
           </div>
         ) : (
           <div className="flex items-center gap-2 text-gray-600 text-sm">
-            <Calendar className="w-4 h-4" />
+            <span>📅</span>
             <span>
               {daysRemaining > 0 
                 ? `${daysRemaining} días restantes`
@@ -303,7 +300,7 @@ const SavingsGoalCard = ({ goal, onUpdate, onDelete, onAddSavings }) => {
               disabled={isSubmitting}
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
             >
-              <Plus className="w-4 h-4" />
+              <span>➕</span>
               Añadir Dinero
             </button>
           )}
