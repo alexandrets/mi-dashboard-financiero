@@ -207,7 +207,6 @@ const LogoutButton = () => {
 // ===========================================
 
 const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos }) => {
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [nuevoIngreso, setNuevoIngreso] = useState({ 
     descripcion: '', 
     monto: '', 
@@ -295,465 +294,446 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
               </div>
             </div>
           </div>
-          
-          {/* Pestañas de navegación */}
-          <div className="border-t border-white/20">
-            <div className="flex space-x-8 px-6">
-              {[
-                { id: 'dashboard', label: '🏠 Dashboard', icon: '🏠' },
-                { id: 'presupuestos', label: '💰 Presupuestos', icon: '💰' }
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`py-4 px-2 border-b-2 font-medium text-sm transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-white text-white'
-                      : 'border-transparent text-blue-100 hover:text-white hover:border-blue-200'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {activeTab === 'dashboard' ? (
-          <>
-            {/* Estadísticas principales */}
-            <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 -mt-8 border border-gray-200">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                  <div className="text-4xl font-bold mb-4 text-green-600">
-                    €{totalIngresos.toFixed(2)}
-                  </div>
-                  <div className="text-gray-500 text-sm">
-                    📈 Ingresos Totales
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                  <div className="text-4xl font-bold mb-4 text-red-600">
-                    €{totalGastos.toFixed(2)}
-                  </div>
-                  <div className="text-gray-500 text-sm">
-                    📉 Gastos Totales
-                  </div>
-                </div>
-                
-                <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-                  <div className={`text-4xl font-bold mb-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    €{balance.toFixed(2)}
-                  </div>
-                  <div className="text-gray-500 text-sm">
-                    ⚖️ Balance
-                  </div>
-                </div>
+        {/* Estadísticas principales */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 -mt-8 border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+              <div className="text-4xl font-bold mb-4 text-green-600">
+                €{totalIngresos.toFixed(2)}
+              </div>
+              <div className="text-gray-500 text-sm">
+                📈 Ingresos Totales
               </div>
             </div>
+            
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+              <div className="text-4xl font-bold mb-4 text-red-600">
+                €{totalGastos.toFixed(2)}
+              </div>
+              <div className="text-gray-500 text-sm">
+                📉 Gastos Totales
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+              <div className={`text-4xl font-bold mb-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                €{balance.toFixed(2)}
+              </div>
+              <div className="text-gray-500 text-sm">
+                ⚖️ Balance
+              </div>
+            </div>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Gráficos mejorados */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Gráfico de dona - Gastos por categoría */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">🍩 Gastos por Categoría</h3>
               
-              {/* Gráficos mejorados */}
-              <div className="lg:col-span-2 space-y-6">
-                
-                {/* Gráfico de dona - Gastos por categoría */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">🍩 Gastos por Categoría</h3>
-                  
-                  {Object.keys(gastosPorCategoria).length > 0 ? (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Gráfico de dona */}
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={Object.entries(gastosPorCategoria).map(([categoria, monto]) => ({
-                                name: categoria,
-                                value: monto,
-                                emoji: {
-                                  'alimentacion': '🍕',
-                                  'transporte': '🚗', 
-                                  'entretenimiento': '🎬',
-                                  'servicios': '⚡',
-                                  'salud': '🏥',
-                                  'otros': '📦'
-                                }[categoria] || '📦'
-                              }))}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={100}
-                              paddingAngle={5}
-                              dataKey="value"
-                            >
-                              {Object.entries(gastosPorCategoria).map(([categoria], index) => (
-                                <Cell 
-                                  key={`cell-${index}`} 
-                                  fill={
-                                    categoria === 'alimentacion' ? '#f97316' :
-                                    categoria === 'transporte' ? '#3b82f6' :
-                                    categoria === 'entretenimiento' ? '#8b5cf6' :
-                                    categoria === 'servicios' ? '#06b6d4' :
-                                    categoria === 'salud' ? '#10b981' :
-                                    '#6b7280'
-                                  }
-                                />
-                              ))}
-                            </Pie>
-                            <Tooltip 
-                              formatter={(value) => [`€${value.toFixed(2)}`, 'Gasto']}
-                              labelFormatter={(label) => `${
-                                {
-                                  'alimentacion': '🍕',
-                                  'transporte': '🚗',
-                                  'entretenimiento': '🎬', 
-                                  'servicios': '⚡',
-                                  'salud': '🏥',
-                                  'otros': '📦'
-                                }[label] || '📦'
-                              } ${label.charAt(0).toUpperCase() + label.slice(1)}`}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </div>
-                      
-                      {/* Leyenda con detalles */}
-                      <div className="space-y-3">
-                        {Object.entries(gastosPorCategoria)
-                          .sort(([,a], [,b]) => b - a)
-                          .map(([categoria, monto]) => {
-                            const porcentaje = (monto / totalGastos) * 100;
-                            const emoji = {
+              {Object.keys(gastosPorCategoria).length > 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Gráfico de dona */}
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={Object.entries(gastosPorCategoria).map(([categoria, monto]) => ({
+                            name: categoria,
+                            value: monto,
+                            emoji: {
                               'alimentacion': '🍕',
-                              'transporte': '🚗',
+                              'transporte': '🚗', 
                               'entretenimiento': '🎬',
                               'servicios': '⚡',
                               'salud': '🏥',
                               'otros': '📦'
-                            }[categoria] || '📦';
-                            
-                            const color = 
-                              categoria === 'alimentacion' ? '#f97316' :
-                              categoria === 'transporte' ? '#3b82f6' :
-                              categoria === 'entretenimiento' ? '#8b5cf6' :
-                              categoria === 'servicios' ? '#06b6d4' :
-                              categoria === 'salud' ? '#10b981' :
-                              '#6b7280';
-                            
-                            return (
-                              <div key={categoria} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                                <div className="flex items-center gap-3">
-                                  <div 
-                                    className="w-4 h-4 rounded-full"
-                                    style={{ backgroundColor: color }}
-                                  ></div>
-                                  <span className="font-medium capitalize flex items-center gap-2">
-                                    <span>{emoji}</span>
-                                    {categoria}
-                                  </span>
-                                </div>
-                                <div className="text-right">
-                                  <div className="font-bold text-gray-800">€{monto.toFixed(2)}</div>
-                                  <div className="text-sm text-gray-500">{porcentaje.toFixed(1)}%</div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <div className="text-6xl mb-4">🍩</div>
-                      <p>No hay gastos registrados aún</p>
-                      <p className="text-sm">¡Agrega tu primer gasto para ver el análisis!</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Gráfico de barras - Comparación Ingresos vs Gastos */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6">📊 Comparación Mensual</h3>
-                  
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={[
-                          {
-                            mes: 'Este Mes',
-                            ingresos: totalIngresos,
-                            gastos: totalGastos,
-                            balance: balance
-                          }
-                        ]}
-                        margin={{
-                          top: 20,
-                          right: 30,
-                          left: 20,
-                          bottom: 5,
-                        }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                        <XAxis dataKey="mes" stroke="#6b7280" />
-                        <YAxis stroke="#6b7280" />
+                            }[categoria] || '📦'
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {Object.entries(gastosPorCategoria).map(([categoria], index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={
+                                categoria === 'alimentacion' ? '#f97316' :
+                                categoria === 'transporte' ? '#3b82f6' :
+                                categoria === 'entretenimiento' ? '#8b5cf6' :
+                                categoria === 'servicios' ? '#06b6d4' :
+                                categoria === 'salud' ? '#10b981' :
+                                '#6b7280'
+                              }
+                            />
+                          ))}
+                        </Pie>
                         <Tooltip 
-                          formatter={(value, name) => [
-                            `€${value.toFixed(2)}`, 
-                            name === 'ingresos' ? '📈 Ingresos' : 
-                            name === 'gastos' ? '📉 Gastos' : '⚖️ Balance'
-                          ]}
-                          labelStyle={{ color: '#374151' }}
-                          contentStyle={{ 
-                            backgroundColor: '#fff', 
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px'
-                          }}
+                          formatter={(value) => [`€${value.toFixed(2)}`, 'Gasto']}
+                          labelFormatter={(label) => `${
+                            {
+                              'alimentacion': '🍕',
+                              'transporte': '🚗',
+                              'entretenimiento': '🎬', 
+                              'servicios': '⚡',
+                              'salud': '🏥',
+                              'otros': '📦'
+                            }[label] || '📦'
+                          } ${label.charAt(0).toUpperCase() + label.slice(1)}`}
                         />
-                        <Bar dataKey="ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
-                        <Bar dataKey="gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                      </BarChart>
+                      </PieChart>
                     </ResponsiveContainer>
                   </div>
                   
-                  <div className="mt-4 grid grid-cols-3 gap-4 text-center">
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <div className="text-green-600 font-bold">📈 Ingresos</div>
-                      <div className="text-2xl font-bold text-green-700">€{totalIngresos.toFixed(2)}</div>
-                    </div>
-                    <div className="p-3 bg-red-50 rounded-lg">
-                      <div className="text-red-600 font-bold">📉 Gastos</div>
-                      <div className="text-2xl font-bold text-red-700">€{totalGastos.toFixed(2)}</div>
-                    </div>
-                    <div className={`p-3 rounded-lg ${balance >= 0 ? 'bg-blue-50' : 'bg-yellow-50'}`}>
-                      <div className={`font-bold ${balance >= 0 ? 'text-blue-600' : 'text-yellow-600'}`}>
-                        ⚖️ Balance
-                      </div>
-                      <div className={`text-2xl font-bold ${balance >= 0 ? 'text-blue-700' : 'text-yellow-700'}`}>
-                        €{balance.toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Panel de acciones */}
-              <div className="lg:col-span-1 space-y-6">
-                {/* Botones de acción */}
-                <div className="space-y-3">
-                  <button
-                    onClick={() => setMostrarFormIngreso(!mostrarFormIngreso)}
-                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
-                  >
-                    <span>📈</span>
-                    <span>Nuevo Ingreso</span>
-                  </button>
-
-                  <button
-                    onClick={() => setMostrarFormGasto(!mostrarFormGasto)}
-                    className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
-                  >
-                    <span>📉</span>
-                    <span>Nuevo Gasto</span>
-                  </button>
-                </div>
-
-                {/* Formulario de Ingreso */}
-                {mostrarFormIngreso && (
-                  <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                    <h4 className="font-semibold text-green-800 mb-3">➕ Agregar Ingreso</h4>
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Descripción"
-                        value={nuevoIngreso.descripcion}
-                        onChange={(e) => setNuevoIngreso({...nuevoIngreso, descripcion: e.target.value})}
-                        className="w-full p-2 border border-green-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Monto"
-                        value={nuevoIngreso.monto}
-                        onChange={(e) => setNuevoIngreso({...nuevoIngreso, monto: e.target.value})}
-                        className="w-full p-2 border border-green-300 rounded-lg text-sm"
-                      />
-                      <select
-                        value={nuevoIngreso.categoria}
-                        onChange={(e) => setNuevoIngreso({...nuevoIngreso, categoria: e.target.value})}
-                        className="w-full p-2 border border-green-300 rounded-lg text-sm"
-                      >
-                        <option value="trabajo">💼 Trabajo</option>
-                        <option value="freelance">💻 Freelance</option>
-                        <option value="inversiones">📈 Inversiones</option>
-                        <option value="otros">📦 Otros</option>
-                      </select>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={agregarIngreso}
-                          className="flex-1 bg-green-600 text-white p-2 rounded-lg text-sm hover:bg-green-700"
-                        >
-                          ✅ Agregar
-                        </button>
-                        <button
-                          onClick={() => setMostrarFormIngreso(false)}
-                          className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
-                        >
-                          ❌ Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Formulario de Gasto */}
-                {mostrarFormGasto && (
-                  <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-                    <h4 className="font-semibold text-red-800 mb-3">➖ Agregar Gasto</h4>
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        placeholder="Descripción"
-                        value={nuevoGasto.descripcion}
-                        onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
-                        className="w-full p-2 border border-red-300 rounded-lg text-sm"
-                      />
-                      <input
-                        type="number"
-                        placeholder="Monto"
-                        value={nuevoGasto.monto}
-                        onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
-                        className="w-full p-2 border border-red-300 rounded-lg text-sm"
-                      />
-                      <select
-                        value={nuevoGasto.categoria}
-                        onChange={(e) => setNuevoGasto({...nuevoGasto, categoria: e.target.value})}
-                        className="w-full p-2 border border-red-300 rounded-lg text-sm"
-                      >
-                        <option value="alimentacion">🍕 Alimentación</option>
-                        <option value="transporte">🚗 Transporte</option>
-                        <option value="entretenimiento">🎬 Entretenimiento</option>
-                        <option value="servicios">⚡ Servicios</option>
-                        <option value="salud">🏥 Salud</option>
-                        <option value="otros">📦 Otros</option>
-                      </select>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={agregarGasto}
-                          className="flex-1 bg-red-600 text-white p-2 rounded-lg text-sm hover:bg-red-700"
-                        >
-                          ✅ Agregar
-                        </button>
-                        <button
-                          onClick={() => setMostrarFormGasto(false)}
-                          className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
-                        >
-                          ❌ Cancelar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Transacciones Recientes */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-                  <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <span>📋</span>
-                    Transacciones Recientes
-                  </h3>
-
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {[...ingresos, ...gastos]
-                      .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-                      .slice(0, 8)
-                      .map((transaccion) => (
-                        <div 
-                          key={transaccion.id} 
-                          className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors border-l-4"
-                          style={{
-                            borderLeftColor: transaccion.monto > 0 ? '#10b981' : '#ef4444'
-                          }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium text-gray-800 truncate">
-                                {transaccion.monto > 0 ? '💰' : '💸'} {transaccion.descripcion}
-                              </p>
-                              <div className="flex items-center space-x-2 text-xs text-gray-500">
-                                <span className={`px-2 py-1 rounded-full ${
-                                  transaccion.monto > 0 
-                                    ? "bg-green-100 text-green-700" 
-                                    : "bg-red-100 text-red-700"
-                                }`}>
-                                  {transaccion.categoria}
-                                </span>
-                                <span>•</span>
-                                <span>{new Date(transaccion.fecha).toLocaleDateString('es-ES')}</span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center space-x-2">
-                              <span className={`text-sm font-bold ${
-                                transaccion.monto > 0 ? "text-green-600" : "text-red-600"
-                              }`}>
-                                {transaccion.monto > 0 ? '+' : ''}€{Math.abs(transaccion.monto).toFixed(2)}
+                  {/* Leyenda con detalles */}
+                  <div className="space-y-3">
+                    {Object.entries(gastosPorCategoria)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([categoria, monto]) => {
+                        const porcentaje = (monto / totalGastos) * 100;
+                        const emoji = {
+                          'alimentacion': '🍕',
+                          'transporte': '🚗',
+                          'entretenimiento': '🎬',
+                          'servicios': '⚡',
+                          'salud': '🏥',
+                          'otros': '📦'
+                        }[categoria] || '📦';
+                        
+                        const color = 
+                          categoria === 'alimentacion' ? '#f97316' :
+                          categoria === 'transporte' ? '#3b82f6' :
+                          categoria === 'entretenimiento' ? '#8b5cf6' :
+                          categoria === 'servicios' ? '#06b6d4' :
+                          categoria === 'salud' ? '#10b981' :
+                          '#6b7280';
+                        
+                        return (
+                          <div key={categoria} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: color }}
+                              ></div>
+                              <span className="font-medium capitalize flex items-center gap-2">
+                                <span>{emoji}</span>
+                                {categoria}
                               </span>
-                              
-                              <button 
-                                onClick={() => eliminarTransaccion(transaccion.id, transaccion.monto > 0 ? 'ingreso' : 'gasto')}
-                                className="w-6 h-6 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors text-xs"
-                                title="Eliminar transacción"
-                              >
-                                🗑️
-                              </button>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-gray-800">€{monto.toFixed(2)}</div>
+                              <div className="text-sm text-gray-500">{porcentaje.toFixed(1)}%</div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="text-6xl mb-4">🍩</div>
+                  <p>No hay gastos registrados aún</p>
+                  <p className="text-sm">¡Agrega tu primer gasto para ver el análisis!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Gráfico de barras - Comparación Ingresos vs Gastos */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">📊 Comparación Mensual</h3>
+              
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      {
+                        mes: 'Este Mes',
+                        ingresos: totalIngresos,
+                        gastos: totalGastos,
+                        balance: balance
+                      }
+                    ]}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mes" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        `€${value.toFixed(2)}`, 
+                        name === 'ingresos' ? '📈 Ingresos' : 
+                        name === 'gastos' ? '📉 Gastos' : '⚖️ Balance'
+                      ]}
+                      labelStyle={{ color: '#374151' }}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar dataKey="ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              
+              <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="text-green-600 font-bold">📈 Ingresos</div>
+                  <div className="text-2xl font-bold text-green-700">€{totalIngresos.toFixed(2)}</div>
+                </div>
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="text-red-600 font-bold">📉 Gastos</div>
+                  <div className="text-2xl font-bold text-red-700">€{totalGastos.toFixed(2)}</div>
+                </div>
+                <div className={`p-3 rounded-lg ${balance >= 0 ? 'bg-blue-50' : 'bg-yellow-50'}`}>
+                  <div className={`font-bold ${balance >= 0 ? 'text-blue-600' : 'text-yellow-600'}`}>
+                    ⚖️ Balance
+                  </div>
+                  <div className={`text-2xl font-bold ${balance >= 0 ? 'text-blue-700' : 'text-yellow-700'}`}>
+                    €{balance.toFixed(2)}
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Objetivos simplificados */}
-            {objetivos.length > 0 && (
-              <div className="mt-8">
-                <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-                  <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                    <span>🎯</span>
-                    Mis Objetivos Financieros
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {objetivos.map((objetivo) => {
-                      const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
-                      return (
-                        <div key={objetivo.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                          <h4 className="font-medium text-blue-800 mb-2">🎯 {objetivo.nombre}</h4>
-                          <div className="flex justify-between text-sm text-blue-600 mb-2">
-                            <span>€{objetivo.actual.toFixed(2)}</span>
-                            <span>€{objetivo.meta.toFixed(2)}</span>
-                          </div>
-                          <div className="bg-blue-200 rounded-full h-3 mb-2">
-                            <div 
-                              className="bg-blue-600 h-3 rounded-full transition-all duration-500"
-                              style={{ width: `${progreso}%` }}
-                            ></div>
-                          </div>
-                          <p className="text-xs text-blue-600">{progreso.toFixed(1)}% completado</p>
-                        </div>
-                      );
-                    })}
+          {/* Panel de acciones */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Botones de acción */}
+            <div className="space-y-3">
+              <button
+                onClick={() => setMostrarFormIngreso(!mostrarFormIngreso)}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+              >
+                <span>📈</span>
+                <span>Nuevo Ingreso</span>
+              </button>
+
+              <button
+                onClick={() => setMostrarFormGasto(!mostrarFormGasto)}
+                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+              >
+                <span>📉</span>
+                <span>Nuevo Gasto</span>
+              </button>
+            </div>
+
+            {/* Formulario de Ingreso */}
+            {mostrarFormIngreso && (
+              <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-3">➕ Agregar Ingreso</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Descripción"
+                    value={nuevoIngreso.descripcion}
+                    onChange={(e) => setNuevoIngreso({...nuevoIngreso, descripcion: e.target.value})}
+                    className="w-full p-2 border border-green-300 rounded-lg text-sm"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Monto"
+                    value={nuevoIngreso.monto}
+                    onChange={(e) => setNuevoIngreso({...nuevoIngreso, monto: e.target.value})}
+                    className="w-full p-2 border border-green-300 rounded-lg text-sm"
+                  />
+                  <select
+                    value={nuevoIngreso.categoria}
+                    onChange={(e) => setNuevoIngreso({...nuevoIngreso, categoria: e.target.value})}
+                    className="w-full p-2 border border-green-300 rounded-lg text-sm"
+                  >
+                    <option value="trabajo">💼 Trabajo</option>
+                    <option value="freelance">💻 Freelance</option>
+                    <option value="inversiones">📈 Inversiones</option>
+                    <option value="otros">📦 Otros</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={agregarIngreso}
+                      className="flex-1 bg-green-600 text-white p-2 rounded-lg text-sm hover:bg-green-700"
+                    >
+                      ✅ Agregar
+                    </button>
+                    <button
+                      onClick={() => setMostrarFormIngreso(false)}
+                      className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
+                    >
+                      ❌ Cancelar
+                    </button>
                   </div>
                 </div>
               </div>
             )}
-          </>
-        ) : activeTab === 'presupuestos' ? (
-          <div className="mt-6">
+
+            {/* Formulario de Gasto */}
+            {mostrarFormGasto && (
+              <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+                <h4 className="font-semibold text-red-800 mb-3">➖ Agregar Gasto</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Descripción"
+                    value={nuevoGasto.descripcion}
+                    onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
+                    className="w-full p-2 border border-red-300 rounded-lg text-sm"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Monto"
+                    value={nuevoGasto.monto}
+                    onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
+                    className="w-full p-2 border border-red-300 rounded-lg text-sm"
+                  />
+                  <select
+                    value={nuevoGasto.categoria}
+                    onChange={(e) => setNuevoGasto({...nuevoGasto, categoria: e.target.value})}
+                    className="w-full p-2 border border-red-300 rounded-lg text-sm"
+                  >
+                    <option value="alimentacion">🍕 Alimentación</option>
+                    <option value="transporte">🚗 Transporte</option>
+                    <option value="entretenimiento">🎬 Entretenimiento</option>
+                    <option value="servicios">⚡ Servicios</option>
+                    <option value="salud">🏥 Salud</option>
+                    <option value="otros">📦 Otros</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={agregarGasto}
+                      className="flex-1 bg-red-600 text-white p-2 rounded-lg text-sm hover:bg-red-700"
+                    >
+                      ✅ Agregar
+                    </button>
+                    <button
+                      onClick={() => setMostrarFormGasto(false)}
+                      className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
+                    >
+                      ❌ Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Transacciones Recientes */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>📋</span>
+                Transacciones Recientes
+              </h3>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {[...ingresos, ...gastos]
+                  .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+                  .slice(0, 8)
+                  .map((transaccion) => (
+                    <div 
+                      key={transaccion.id} 
+                      className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors border-l-4"
+                      style={{
+                        borderLeftColor: transaccion.monto > 0 ? '#10b981' : '#ef4444'
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {transaccion.monto > 0 ? '💰' : '💸'} {transaccion.descripcion}
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <span className={`px-2 py-1 rounded-full ${
+                              transaccion.monto > 0 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {transaccion.categoria}
+                            </span>
+                            <span>•</span>
+                            <span>{new Date(transaccion.fecha).toLocaleDateString('es-ES')}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-sm font-bold ${
+                            transaccion.monto > 0 ? "text-green-600" : "text-red-600"
+                          }`}>
+                            {transaccion.monto > 0 ? '+' : ''}€{Math.abs(transaccion.monto).toFixed(2)}
+                          </span>
+                          
+                          <button 
+                            onClick={() => eliminarTransaccion(transaccion.id, transaccion.monto > 0 ? 'ingreso' : 'gasto')}
+                            className="w-6 h-6 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors text-xs"
+                            title="Eliminar transacción"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Módulo de Presupuestos integrado */}
+        <div className="mt-8">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <span>💰</span>
+              Gestión de Presupuestos
+            </h3>
             <Budgets transactions={convertTransactionsForBudgets(ingresos, gastos)} />
           </div>
-        ) : null}
+        </div>
+
+        {/* Objetivos simplificados */}
+        {objetivos.length > 0 && (
+          <div className="mt-8">
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <span>🎯</span>
+                Mis Objetivos Financieros
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {objetivos.map((objetivo) => {
+                  const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
+                  return (
+                    <div key={objetivo.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-800 mb-2">🎯 {objetivo.nombre}</h4>
+                      <div className="flex justify-between text-sm text-blue-600 mb-2">
+                        <span>€{objetivo.actual.toFixed(2)}</span>
+                        <span>€{objetivo.meta.toFixed(2)}</span>
+                      </div>
+                      <div className="bg-blue-200 rounded-full h-3 mb-2">
+                        <div 
+                          className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${progreso}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-blue-600">{progreso.toFixed(1)}% completado</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
