@@ -1,25 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 
-// Hook para localStorage 
+// Hook mejorado para localStorage con sincronización automática
 const useLocalStorage = (key, initialValue) => {
+  // Estado inicial
   const [storedValue, setStoredValue] = useState(() => {
     try {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : initialValue;
     } catch (error) {
+      console.error(`Error reading localStorage key "${key}":`, error);
       return initialValue;
     }
   });
 
+  // Función para actualizar valor
   const setValue = (value) => {
     try {
+      // Guardar en estado
       setStoredValue(value);
+      
+      // Guardar en localStorage
       window.localStorage.setItem(key, JSON.stringify(value));
+      
+      // Disparar evento personalizado para sincronizar otros componentes
+      window.dispatchEvent(new CustomEvent('localStorageChange', {
+        detail: { key, value }
+      }));
+      
+      console.log(`✅ LocalStorage updated: ${key}`, value);
+      
     } catch (error) {
-      console.error(error);
+      console.error(`Error setting localStorage key "${key}":`, error);
     }
   };
+
+  // Escuchar cambios de localStorage desde otros componentes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.detail.key === key) {
+        console.log(`🔄 Syncing localStorage: ${key}`, e.detail.value);
+        setStoredValue(e.detail.value);
+      }
+    };
+
+    // Escuchar nuestro evento personalizado
+    window.addEventListener('localStorageChange', handleStorageChange);
+    
+    // También escuchar cambios nativos de localStorage (desde otras pestañas)
+    const handleNativeStorageChange = (e) => {
+      if (e.key === key && e.newValue !== null) {
+        try {
+          const newValue = JSON.parse(e.newValue);
+          console.log(`🔄 Native storage change: ${key}`, newValue);
+          setStoredValue(newValue);
+        } catch (error) {
+          console.error(`Error parsing localStorage change for key "${key}":`, error);
+        }
+      }
+    };
+    
+    window.addEventListener('storage', handleNativeStorageChange);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('localStorageChange', handleStorageChange);
+      window.removeEventListener('storage', handleNativeStorageChange);
+    };
+  }, [key]);
 
   return [storedValue, setValue];
 };
@@ -736,7 +784,7 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
   );
 };
 
-// Versión simplificada de pantallas móviles
+// Pantallas móviles CON categorías
 const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
   const [nuevo, setNuevo] = useState({ descripcion: '', monto: '', categoria: 'trabajo' });
 
@@ -771,6 +819,16 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
             onChange={(e) => setNuevo({...nuevo, monto: e.target.value})}
             className="w-full p-3 border rounded-lg"
           />
+          <select
+            value={nuevo.categoria}
+            onChange={(e) => setNuevo({...nuevo, categoria: e.target.value})}
+            className="w-full p-3 border rounded-lg bg-white"
+          >
+            <option value="trabajo">💼 Trabajo</option>
+            <option value="freelance">💻 Freelance</option>
+            <option value="inversiones">📈 Inversiones</option>
+            <option value="otros">📦 Otros</option>
+          </select>
           <button onClick={agregar} className="w-full bg-green-600 text-white p-3 rounded-lg">
             ✅ Agregar Ingreso
           </button>
@@ -828,6 +886,18 @@ const MobileGastosScreen = ({ gastos, setGastos }) => {
             onChange={(e) => setNuevo({...nuevo, monto: e.target.value})}
             className="w-full p-3 border rounded-lg"
           />
+          <select
+            value={nuevo.categoria}
+            onChange={(e) => setNuevo({...nuevo, categoria: e.target.value})}
+            className="w-full p-3 border rounded-lg bg-white"
+          >
+            <option value="alimentacion">🍕 Alimentación</option>
+            <option value="transporte">🚗 Transporte</option>
+            <option value="entretenimiento">🎬 Entretenimiento</option>
+            <option value="servicios">⚡ Servicios</option>
+            <option value="salud">🏥 Salud</option>
+            <option value="otros">📦 Otros</option>
+          </select>
           <button onClick={agregar} className="w-full bg-red-600 text-white p-3 rounded-lg">
             ✅ Agregar Gasto
           </button>
