@@ -1031,9 +1031,9 @@ const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
 
 const MobileDashboard = () => {
   const [activeScreen, setActiveScreen] = useState('dashboard');
-  const [ingresos, setIngresos] = useLocalStorage('mobile_ingresos', datosEjemplo.ingresos);
-  const [gastos, setGastos] = useLocalStorage('mobile_gastos', datosEjemplo.gastos);
-  const [objetivos, setObjetivos] = useLocalStorage('mobile_objetivos', []);
+  const [ingresos, setIngresos] = useLocalStorage('ingresos', datosEjemplo.ingresos);
+  const [gastos, setGastos] = useLocalStorage('gastos', datosEjemplo.gastos);
+  const [objetivos, setObjetivos] = useLocalStorage('objetivos', []);
 
   const renderScreen = () => {
     switch (activeScreen) {
