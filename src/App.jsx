@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Home, TrendingUp, TrendingDown, BarChart3, CreditCard, User, Plus, ArrowLeft, Calendar, Target, Trash2, Edit3, Monitor, Smartphone, Settings } from 'lucide-react';
 
-// Imports de tus componentes originales
-import { useExpenses } from './hooks/useExpenses';
-import { useAuth } from './contexts/AuthContext';
-import DonutChart from './components/DonutChart';
-import SavingsGoals from './components/SavingsGoals';
-import Budgets from './components/Budgets';
-import RecurringTransactions from './components/RecurringTransactions';
-import TrendsChart from './components/TrendsChart';
-import QuickTransactionForm from './components/QuickTransactionForm';
-import InstallPWA from './components/InstallPWA';
-
-// Hook para localStorage (para objetivos en vista móvil)
+// Hook para localStorage 
 const useLocalStorage = (key, initialValue) => {
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -64,6 +53,21 @@ const useViewContext = () => {
   return context;
 };
 
+// Datos de ejemplo para demostración
+const datosEjemplo = {
+  ingresos: [
+    { id: 1, descripcion: 'Salario Enero', monto: 3500, fecha: '2024-01-31', categoria: 'trabajo' },
+    { id: 2, descripcion: 'Freelance Web', monto: 800, fecha: '2024-01-25', categoria: 'freelance' },
+    { id: 3, descripcion: 'Dividendos', monto: 150, fecha: '2024-01-20', categoria: 'inversiones' }
+  ],
+  gastos: [
+    { id: 4, descripcion: 'Supermercado', monto: -120, fecha: '2024-01-30', categoria: 'alimentacion' },
+    { id: 5, descripcion: 'Gasolina', monto: -60, fecha: '2024-01-29', categoria: 'transporte' },
+    { id: 6, descripcion: 'Netflix', monto: -15, fecha: '2024-01-28', categoria: 'entretenimiento' },
+    { id: 7, descripcion: 'Electricidad', monto: -85, fecha: '2024-01-27', categoria: 'servicios' }
+  ]
+};
+
 // Selector de vista manual
 const ViewToggle = ({ currentView, onViewChange, context }) => (
   <div className="fixed top-4 right-4 z-50 bg-white rounded-lg shadow-lg border border-gray-200 p-2">
@@ -98,146 +102,89 @@ const ViewToggle = ({ currentView, onViewChange, context }) => (
 );
 
 // ===========================================
-// VISTA WEB/DESKTOP (TODAS TUS FUNCIONALIDADES ORIGINALES)
+// VISTA WEB/DESKTOP SIMPLIFICADA
 // ===========================================
 
-const WebDashboard = () => {
-  const { currentUser, logout } = useAuth();
-  const { transactions, loading, error, deleteExpense, totals, addExpense } = useExpenses();
-  const [isQuickFormOpen, setIsQuickFormOpen] = useState(false);
+const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos }) => {
+  const [nuevoIngreso, setNuevoIngreso] = useState({ 
+    descripcion: '', 
+    monto: '', 
+    categoria: 'trabajo',
+    fecha: new Date().toISOString().split('T')[0]
+  });
+  
+  const [nuevoGasto, setNuevoGasto] = useState({ 
+    descripcion: '', 
+    monto: '', 
+    categoria: 'alimentacion',
+    fecha: new Date().toISOString().split('T')[0]
+  });
 
-  // Todas tus funciones originales del Dashboard
-  const handleDelete = async (transactionId) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar esta transacción?')) {
-      try {
-        await deleteExpense(transactionId);
-        console.log('✅ Transacción eliminada:', transactionId);
-      } catch (error) {
-        console.error('❌ Error al eliminar:', error);
-        alert('Error al eliminar transacción: ' + error.message);
-      }
+  const [mostrarFormIngreso, setMostrarFormIngreso] = useState(false);
+  const [mostrarFormGasto, setMostrarFormGasto] = useState(false);
+
+  // Cálculos
+  const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
+  const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
+  const balance = totalIngresos - totalGastos;
+
+  // Funciones para agregar transacciones
+  const agregarIngreso = () => {
+    if (nuevoIngreso.descripcion && nuevoIngreso.monto && nuevoIngreso.fecha) {
+      const nuevo = {
+        id: Date.now(),
+        descripcion: nuevoIngreso.descripcion,
+        monto: parseFloat(nuevoIngreso.monto),
+        fecha: nuevoIngreso.fecha,
+        categoria: nuevoIngreso.categoria
+      };
+      setIngresos([nuevo, ...ingresos]);
+      setNuevoIngreso({ descripcion: '', monto: '', categoria: 'trabajo', fecha: new Date().toISOString().split('T')[0] });
+      setMostrarFormIngreso(false);
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } catch (error) {
-      console.error('Error al cerrar sesión:', error);
+  const agregarGasto = () => {
+    if (nuevoGasto.descripcion && nuevoGasto.monto && nuevoGasto.fecha) {
+      const nuevo = {
+        id: Date.now(),
+        descripcion: nuevoGasto.descripcion,
+        monto: -Math.abs(parseFloat(nuevoGasto.monto)),
+        fecha: nuevoGasto.fecha,
+        categoria: nuevoGasto.categoria
+      };
+      setGastos([nuevo, ...gastos]);
+      setNuevoGasto({ descripcion: '', monto: '', categoria: 'alimentacion', fecha: new Date().toISOString().split('T')[0] });
+      setMostrarFormGasto(false);
     }
   };
 
-  const handleTransactionAdded = (newTransaction) => {
-    console.log('🎉 handleTransactionAdded ejecutado con:', newTransaction);
-    setIsQuickFormOpen(false);
-  };
-
-  const handleCloseModal = () => {
-    console.log('❌ handleCloseModal ejecutado');
-    setIsQuickFormOpen(false);
-  };
-
-  // Componente para una tarjeta de estadística elegante (tu original)
-  function StatCard({ title, value, isBalance = false }) {
-    const getTextColor = () => {
-      if (title === "Ingresos Totales") return "text-green-600"
-      if (title === "Gastos Totales") return "text-red-600"
-      if (isBalance) {
-        return parseFloat(value) >= 0 ? "text-green-600" : "text-red-600"
-      }
-      return "text-blue-600"
-    }
-
-    return (
-      <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
-        <div className={`text-4xl font-bold mb-4 ${getTextColor()}`}>
-          €{value}
-        </div>
-        <div className="text-gray-500 text-sm">
-          {title}
-        </div>
-      </div>
-    )
-  }
-
-  // Debug - Estado inicial del Dashboard
-  useEffect(() => {
-    console.log('🏠 Dashboard montado con estado inicial:')
-    console.log('  - Usuario:', currentUser?.email)
-    console.log('  - Transacciones iniciales:', transactions.length)
-    console.log('  - Loading:', loading)
-    console.log('  - Error:', error)
-  }, [])
-
-  // Debug del estado del modal
-  useEffect(() => {
-    if (isQuickFormOpen) {
-      console.log('🎭 Modal QuickTransactionForm MONTADO')
+  const eliminarTransaccion = (id, tipo) => {
+    if (tipo === 'ingreso') {
+      setIngresos(ingresos.filter(item => item.id !== id));
     } else {
-      console.log('🎭 Modal QuickTransactionForm DESMONTADO')
+      setGastos(gastos.filter(item => item.id !== id));
     }
-  }, [isQuickFormOpen])
+  };
 
-  // Datos calculados
-  const balance = totals.balance
-  const topExpenseTransactions = transactions
-    .filter(transaction => transaction.type === 'gasto' && transaction.amount > 0)
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 6) // Top 6 transacciones más costosas
+  // Gastos por categoría para el gráfico simple
+  const gastosPorCategoria = gastos.reduce((acc, gasto) => {
+    acc[gasto.categoria] = (acc[gasto.categoria] || 0) + Math.abs(gasto.monto);
+    return acc;
+  }, {});
 
-  // Debug - Monitorear cambios y funciones disponibles
-  useEffect(() => {
-    console.log('🔄 Dashboard actualizado:')
-    console.log('  - Total transacciones:', transactions.length)
-    console.log('  - Modal abierto:', isQuickFormOpen)
-    console.log('  - addExpense disponible:', !!addExpense)
-    console.log('  - deleteExpense disponible:', !!deleteExpense)
-    
-    console.log('🎣 Hook useExpenses retorna:', {
-      transactions: transactions?.length || 0,
-      totals: !!totals,
-      addExpense: typeof addExpense,
-      deleteExpense: typeof deleteExpense,
-      loading,
-      error
-    })
-  }, [transactions, isQuickFormOpen, addExpense, deleteExpense, totals, loading, error])
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
-        <div className="max-w-7xl mx-auto p-6">
-          <div className="text-center py-20">
-            <div className="w-16 h-16 bg-blue-500/20 rounded-full mx-auto mb-4 animate-pulse"></div>
-            <p className="text-gray-700 text-lg">Cargando tu dashboard financiero...</p>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
-        <div className="max-w-7xl mx-auto p-6">
-          <div className="bg-red-50 border border-red-200 text-red-700 p-6 rounded-xl">
-            <h3 className="text-lg font-bold mb-4">Error al cargar datos</h3>
-            <p>{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-4 px-6 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Recargar página
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const categoriaColores = {
+    'alimentacion': 'bg-orange-500',
+    'transporte': 'bg-blue-500',
+    'entretenimiento': 'bg-purple-500',
+    'servicios': 'bg-cyan-500',
+    'salud': 'bg-green-500',
+    'otros': 'bg-gray-500'
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
-      {/* Header Premium - TU DISEÑO ORIGINAL */}
+      {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 shadow-lg">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between p-6">
@@ -250,328 +197,302 @@ const WebDashboard = () => {
                   Dashboard Financiero
                 </h1>
                 <p className="text-blue-100">
-                  Bienvenido, {currentUser?.email?.split('@')[0]}
+                  Tu gestión financiera personal
                 </p>
               </div>
             </div>
-            
-            <button 
-              onClick={handleLogout}
-              className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2"
-            >
-              <span>👋</span>
-              <span>Cerrar Sesión</span>
-            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Estadísticas Elegantes - TU DISEÑO ORIGINAL */}
+        {/* Estadísticas principales */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8 -mt-8 border border-gray-200">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <StatCard 
-              title="Ingresos Totales" 
-              value={totals.totalIncomes.toFixed(2)} 
-            />
-            <StatCard 
-              title="Gastos Totales" 
-              value={totals.totalExpenses.toFixed(2)} 
-            />
-            <StatCard 
-              title="Balance" 
-              value={balance.toFixed(2)} 
-              isBalance={true}
-            />
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+              <div className="text-4xl font-bold mb-4 text-green-600">
+                €{totalIngresos.toFixed(2)}
+              </div>
+              <div className="text-gray-500 text-sm">
+                Ingresos Totales
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+              <div className="text-4xl font-bold mb-4 text-red-600">
+                €{totalGastos.toFixed(2)}
+              </div>
+              <div className="text-gray-500 text-sm">
+                Gastos Totales
+              </div>
+            </div>
+            
+            <div className="bg-white rounded-xl shadow-md p-6 border border-gray-100">
+              <div className={`text-4xl font-bold mb-4 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                €{balance.toFixed(2)}
+              </div>
+              <div className="text-gray-500 text-sm">
+                Balance
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Gráfico de Dona con Transacciones - TU COMPONENTE ORIGINAL */}
+          
+          {/* Gráfico de gastos por categoría - SIMPLE */}
           <div className="lg:col-span-2">
-            <DonutChart 
-              data={totals.expensesByCategory} 
-              title="Gastos por Categoría"
-              transactions={transactions}
-            />
-          </div>
-
-          {/* Panel de Acciones - TU DISEÑO ORIGINAL */}
-          <div className="lg:col-span-1 space-y-6">
-            <button
-              onClick={() => {
-                console.log('🔓 Abriendo modal de transacción')
-                setIsQuickFormOpen(true)
-              }}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
-            >
-              <span>💰</span>
-              <span>Nueva Transacción</span>
-            </button>
-
-            {/* Transacciones Recientes - TU DISEÑO ORIGINAL */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                    <span className="text-gray-600 text-sm">📋</span>
-                  </div>
-                  <h3 className="text-base font-bold text-gray-800">
-                    Recientes ({transactions.length})
-                  </h3>
-                </div>
-                
-                {transactions.length > 0 && (
-                  <button 
-                    onClick={() => {
-                      console.log('🔓 Abriendo modal desde botón "Agregar"')
-                      setIsQuickFormOpen(true)
-                    }}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    ➕ Agregar
-                  </button>
-                )}
-              </div>
-
-              {transactions.length === 0 ? (
-                <div className="text-center py-6">
-                  <span className="text-2xl mb-2 block">📭</span>
-                  <p className="text-gray-600 text-sm">
-                    Sin transacciones
-                  </p>
-                  <button
-                    onClick={() => {
-                      console.log('🔓 Abriendo modal para primera transacción')
-                      setIsQuickFormOpen(true)
-                    }}
-                    className="mt-3 text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    ➕ Agregar primera transacción
-                  </button>
+              <h3 className="text-xl font-bold text-gray-800 mb-6">Gastos por Categoría</h3>
+              
+              {Object.keys(gastosPorCategoria).length > 0 ? (
+                <div className="space-y-4">
+                  {Object.entries(gastosPorCategoria)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([categoria, monto]) => {
+                      const porcentaje = (monto / totalGastos) * 100;
+                      return (
+                        <div key={categoria}>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium capitalize">{categoria}</span>
+                            <span className="text-sm text-gray-600">
+                              €{monto.toFixed(2)} ({porcentaje.toFixed(1)}%)
+                            </span>
+                          </div>
+                          <div className="bg-gray-200 rounded-full h-3">
+                            <div 
+                              className={`h-3 rounded-full transition-all duration-500 ${categoriaColores[categoria] || 'bg-gray-500'}`}
+                              style={{ width: `${porcentaje}%` }}
+                            ></div>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto">
-                  {transactions.map((transaction, index) => (
+                <div className="text-center py-12 text-gray-500">
+                  <BarChart3 size={64} className="mx-auto mb-4 opacity-50" />
+                  <p>No hay gastos registrados aún</p>
+                  <p className="text-sm">¡Agrega tu primer gasto para ver el análisis!</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Panel de acciones */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Botones de acción */}
+            <div className="space-y-3">
+              <button
+                onClick={() => setMostrarFormIngreso(!mostrarFormIngreso)}
+                className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+              >
+                <TrendingUp size={20} />
+                <span>Nuevo Ingreso</span>
+              </button>
+
+              <button
+                onClick={() => setMostrarFormGasto(!mostrarFormGasto)}
+                className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
+              >
+                <TrendingDown size={20} />
+                <span>Nuevo Gasto</span>
+              </button>
+            </div>
+
+            {/* Formulario de Ingreso */}
+            {mostrarFormIngreso && (
+              <div className="bg-green-50 p-4 rounded-xl border border-green-200">
+                <h4 className="font-semibold text-green-800 mb-3">Agregar Ingreso</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Descripción"
+                    value={nuevoIngreso.descripcion}
+                    onChange={(e) => setNuevoIngreso({...nuevoIngreso, descripcion: e.target.value})}
+                    className="w-full p-2 border border-green-300 rounded-lg text-sm"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Monto"
+                    value={nuevoIngreso.monto}
+                    onChange={(e) => setNuevoIngreso({...nuevoIngreso, monto: e.target.value})}
+                    className="w-full p-2 border border-green-300 rounded-lg text-sm"
+                  />
+                  <select
+                    value={nuevoIngreso.categoria}
+                    onChange={(e) => setNuevoIngreso({...nuevoIngreso, categoria: e.target.value})}
+                    className="w-full p-2 border border-green-300 rounded-lg text-sm"
+                  >
+                    <option value="trabajo">Trabajo</option>
+                    <option value="freelance">Freelance</option>
+                    <option value="inversiones">Inversiones</option>
+                    <option value="otros">Otros</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={agregarIngreso}
+                      className="flex-1 bg-green-600 text-white p-2 rounded-lg text-sm hover:bg-green-700"
+                    >
+                      Agregar
+                    </button>
+                    <button
+                      onClick={() => setMostrarFormIngreso(false)}
+                      className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Formulario de Gasto */}
+            {mostrarFormGasto && (
+              <div className="bg-red-50 p-4 rounded-xl border border-red-200">
+                <h4 className="font-semibold text-red-800 mb-3">Agregar Gasto</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    placeholder="Descripción"
+                    value={nuevoGasto.descripcion}
+                    onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
+                    className="w-full p-2 border border-red-300 rounded-lg text-sm"
+                  />
+                  <input
+                    type="number"
+                    placeholder="Monto"
+                    value={nuevoGasto.monto}
+                    onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
+                    className="w-full p-2 border border-red-300 rounded-lg text-sm"
+                  />
+                  <select
+                    value={nuevoGasto.categoria}
+                    onChange={(e) => setNuevoGasto({...nuevoGasto, categoria: e.target.value})}
+                    className="w-full p-2 border border-red-300 rounded-lg text-sm"
+                  >
+                    <option value="alimentacion">Alimentación</option>
+                    <option value="transporte">Transporte</option>
+                    <option value="entretenimiento">Entretenimiento</option>
+                    <option value="servicios">Servicios</option>
+                    <option value="salud">Salud</option>
+                    <option value="otros">Otros</option>
+                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={agregarGasto}
+                      className="flex-1 bg-red-600 text-white p-2 rounded-lg text-sm hover:bg-red-700"
+                    >
+                      Agregar
+                    </button>
+                    <button
+                      onClick={() => setMostrarFormGasto(false)}
+                      className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Transacciones Recientes */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-base font-bold text-gray-800 mb-4">
+                Transacciones Recientes
+              </h3>
+
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {[...ingresos, ...gastos]
+                  .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+                  .slice(0, 8)
+                  .map((transaccion) => (
                     <div 
-                      key={transaction.id} 
+                      key={transaccion.id} 
                       className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors border-l-4"
                       style={{
-                        borderLeftColor: transaction.type === 'ingreso' ? '#10b981' : '#ef4444'
+                        borderLeftColor: transaccion.monto > 0 ? '#10b981' : '#ef4444'
                       }}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3 flex-1">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                            transaction.type === 'ingreso' 
-                              ? "bg-gradient-to-br from-green-50 to-green-100" 
-                              : "bg-gradient-to-br from-red-50 to-red-100"
-                          }`}>
-                            <span className="text-sm">
-                              {transaction.type === 'ingreso' ? '💰' : '💸'}
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {transaccion.descripcion}
+                          </p>
+                          <div className="flex items-center space-x-2 text-xs text-gray-500">
+                            <span className={`px-2 py-1 rounded-full ${
+                              transaccion.monto > 0 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-red-100 text-red-700"
+                            }`}>
+                              {transaccion.categoria}
                             </span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-800 truncate">
-                              {transaction.description || 'Sin descripción'}
-                            </p>
-                            <div className="flex items-center space-x-2 text-xs text-gray-500">
-                              <span className={`px-2 py-1 rounded-full ${
-                                transaction.type === 'ingreso' 
-                                  ? "bg-green-100 text-green-700" 
-                                  : "bg-red-100 text-red-700"
-                              }`}>
-                                {transaction.category}
-                              </span>
-                              <span>•</span>
-                              <span>{new Date(transaction.date).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}</span>
-                              {index === 0 && (
-                                <>
-                                  <span>•</span>
-                                  <span className="text-blue-600 font-medium">Nuevo</span>
-                                </>
-                              )}
-                            </div>
+                            <span>•</span>
+                            <span>{new Date(transaccion.fecha).toLocaleDateString('es-ES')}</span>
                           </div>
                         </div>
                         
                         <div className="flex items-center space-x-2">
                           <span className={`text-sm font-bold ${
-                            transaction.type === 'ingreso' ? "text-green-600" : "text-red-600"
+                            transaccion.monto > 0 ? "text-green-600" : "text-red-600"
                           }`}>
-                            {transaction.type === 'ingreso' ? '+' : '-'}€{(transaction.amount || 0).toFixed(2)}
+                            {transaccion.monto > 0 ? '+' : ''}€{Math.abs(transaccion.monto).toFixed(2)}
                           </span>
                           
                           <button 
-                            onClick={() => handleDelete(transaction.id)}
+                            onClick={() => eliminarTransaccion(transaccion.id, transaccion.monto > 0 ? 'ingreso' : 'gasto')}
                             className="w-6 h-6 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors"
                             title="Eliminar transacción"
                           >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9zM4 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 112 0v3a1 1 0 11-2 0V9zm4 0a1 1 0 112 0v3a1 1 0 11-2 0V9z" clipRule="evenodd" />
-                            </svg>
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </div>
                     </div>
                   ))}
-                </div>
-              )}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* TODOS TUS MÓDULOS ORIGINALES */}
-        
-        {/* Módulo de Presupuestos */}
-        <div className="mb-8 mt-5">
-          <Budgets transactions={transactions} />
-        </div>
-
-        {/* Transacciones Recurrentes */}
-        <div className="mb-8">
-          <RecurringTransactions />
-        </div>
-
-        {/* Metas de Ahorro */}
-        <div className="mb-8">
-          <SavingsGoals />
-        </div>
-
-        {/* Top Transacciones de Gastos - TU MÓDULO ORIGINAL COMPLETO */}
-        {topExpenseTransactions.length > 0 && (
-          <div className="mb-8">
+        {/* Objetivos simplificados */}
+        {objetivos.length > 0 && (
+          <div className="mt-8">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-              <div className="flex items-center space-x-3 mb-6">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
-                  <span className="text-yellow-600">🏆</span>
-                </div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  Mayores Gastos
-                </h2>
-              </div>
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {topExpenseTransactions.map((transaction, index) => (
-                  <div key={transaction.id} className="bg-gradient-to-br from-white to-red-50 rounded-xl p-4 border border-red-100 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-2xl">
-                        {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : '💸'}
-                      </span>
-                      <span className="text-lg font-bold text-red-600">
-                        €{transaction.amount.toFixed(2)}
-                      </span>
-                    </div>
-                    
-                    <div className="mb-3">
-                      <h3 className="text-base font-semibold text-gray-800 truncate mb-1">
-                        {transaction.description || 'Sin descripción'}
-                      </h3>
-                      <div className="flex items-center space-x-2">
-                        <span className="px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                          {transaction.category}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {new Date(transaction.date).toLocaleDateString('es-ES', { 
-                            day: '2-digit', 
-                            month: '2-digit', 
-                            year: '2-digit' 
-                          })}
-                        </span>
+              <h3 className="text-xl font-bold text-gray-800 mb-6">Mis Objetivos Financieros</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {objetivos.map((objetivo) => {
+                  const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
+                  return (
+                    <div key={objetivo.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-800 mb-2">{objetivo.nombre}</h4>
+                      <div className="flex justify-between text-sm text-blue-600 mb-2">
+                        <span>€{objetivo.actual.toFixed(2)}</span>
+                        <span>€{objetivo.meta.toFixed(2)}</span>
                       </div>
-                    </div>
-
-                    <div className="mt-2">
-                      <div className="bg-gray-200 rounded-full h-2">
+                      <div className="bg-blue-200 rounded-full h-3 mb-2">
                         <div 
-                          className="bg-gradient-to-r from-red-500 to-red-600 h-2 rounded-full transition-all duration-200"
-                          style={{ 
-                            width: `${(transaction.amount / topExpenseTransactions[0].amount) * 100}%` 
-                          }}
+                          className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                          style={{ width: `${progreso}%` }}
                         ></div>
                       </div>
-                      <p className="text-xs mt-1 text-gray-600">
-                        {((transaction.amount / topExpenseTransactions[0].amount) * 100).toFixed(1)}% del mayor gasto
-                      </p>
+                      <p className="text-xs text-blue-600">{progreso.toFixed(1)}% completado</p>
                     </div>
-
-                    <div className="mt-3 flex justify-end">
-                      <button 
-                        onClick={() => handleDelete(transaction.id)}
-                        className="text-gray-400 hover:text-red-500 p-1 rounded transition-colors"
-                        title="Eliminar transacción"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9zM4 5a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 112 0v3a1 1 0 11-2 0V9zm4 0a1 1 0 112 0v3a1 1 0 11-2 0V9z" clipRule="evenodd" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-
-              {topExpenseTransactions.length > 0 && (
-                <div className="mt-6 bg-red-50 rounded-lg p-4 border border-red-200">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-semibold text-red-800 mb-1">
-                        📊 Análisis de Gastos Grandes
-                      </h4>
-                      <p className="text-xs text-red-700">
-                        Estos {topExpenseTransactions.length} gastos representan €{topExpenseTransactions.reduce((sum, t) => sum + t.amount, 0).toFixed(2)} del total
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-red-600">
-                        {((topExpenseTransactions.reduce((sum, t) => sum + t.amount, 0) / totals.totalExpenses) * 100).toFixed(1)}%
-                      </div>
-                      <div className="text-xs text-red-600">del total gastado</div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         )}
-
-        {/* Gráfico de Tendencias Temporales - TU COMPONENTE ORIGINAL */}
-        <div className="mb-8">
-          <TrendsChart />
-        </div>
       </div>
-
-      {/* Modal de Transacción Rápida - TU COMPONENTE ORIGINAL */}
-      {isQuickFormOpen && (
-        <>
-          {console.log('🎭 Pasando props a QuickTransactionForm:', {
-            isOpen: isQuickFormOpen,
-            addExpense: typeof addExpense,
-            addExpenseFunction: addExpense,
-            onClose: typeof handleCloseModal,
-            onTransactionAdded: typeof handleTransactionAdded
-          })}
-          <QuickTransactionForm 
-            isOpen={isQuickFormOpen}
-            onClose={handleCloseModal}
-            onTransactionAdded={handleTransactionAdded}
-            addExpense={addExpense}
-            debug={true}
-            debugMessage="Dashboard → QuickTransactionForm"
-          />
-        </>
-      )}
-
-      {/* Componente PWA - TU COMPONENTE ORIGINAL */}
-      <InstallPWA />
     </div>
   );
 };
 
 // ===========================================
-// VISTA MÓVIL (Navegación por pantallas)
+// VISTA MÓVIL (igual que antes)
 // ===========================================
 
-// Componente de navegación inferior
 const BottomNavigation = ({ activeScreen, setActiveScreen }) => {
   const navItems = [
     { id: 'dashboard', icon: Home, label: 'Inicio' },
@@ -603,7 +524,6 @@ const BottomNavigation = ({ activeScreen, setActiveScreen }) => {
   );
 };
 
-// Header con título y botón atrás
 const AppHeader = ({ title, showBack, onBack }) => (
   <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-4 flex items-center shadow-lg">
     {showBack && (
@@ -615,7 +535,6 @@ const AppHeader = ({ title, showBack, onBack }) => (
   </div>
 );
 
-// Pantalla Dashboard móvil (usando localStorage para datos móviles)
 const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos }) => {
   const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
@@ -626,186 +545,113 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
     .slice(0, 5);
 
   return (
-    <div className="p-4 space-y-6 animate-fadeIn">
-      {/* Balance principal */}
+    <div className="p-4 space-y-6">
       <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 text-white p-6 rounded-2xl shadow-lg">
         <div className="flex justify-between items-start">
           <div>
             <h2 className="text-lg opacity-90">Balance Total</h2>
-            <p className="text-3xl font-bold">${balance.toLocaleString()}</p>
-            <p className="text-sm opacity-80 mt-1">
-              {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
-            </p>
+            <p className="text-3xl font-bold">€{balance.toFixed(2)}</p>
           </div>
           <div className="text-right">
             <p className="text-sm opacity-80">Este mes</p>
             <p className={`text-lg font-bold ${balance >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-              {balance >= 0 ? '+' : ''}{balance.toLocaleString()}
+              {balance >= 0 ? '+' : ''}€{balance.toFixed(2)}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Resumen rápido */}
       <div className="grid grid-cols-2 gap-4">
-        <div className="bg-green-50 p-4 rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-green-50 p-4 rounded-xl border border-green-200">
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="text-green-600" size={20} />
             <span className="text-green-800 font-medium">Ingresos</span>
           </div>
-          <p className="text-2xl font-bold text-green-700">${totalIngresos.toLocaleString()}</p>
-          <p className="text-xs text-green-600 mt-1">{ingresos.length} transacciones</p>
+          <p className="text-2xl font-bold text-green-700">€{totalIngresos.toFixed(2)}</p>
         </div>
 
-        <div className="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm hover:shadow-md transition-shadow">
+        <div className="bg-red-50 p-4 rounded-xl border border-red-200">
           <div className="flex items-center gap-2 mb-2">
             <TrendingDown className="text-red-600" size={20} />
             <span className="text-red-800 font-medium">Gastos</span>
           </div>
-          <p className="text-2xl font-bold text-red-700">${totalGastos.toLocaleString()}</p>
-          <p className="text-xs text-red-600 mt-1">{gastos.length} transacciones</p>
+          <p className="text-2xl font-bold text-red-700">€{totalGastos.toFixed(2)}</p>
         </div>
       </div>
 
-      {/* Acciones rápidas */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-800">Acciones Rápidas</h3>
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={() => setActiveScreen('ingresos')}
-            className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all duration-200 active:scale-95"
+            className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl flex items-center justify-center gap-2"
           >
             <Plus size={20} />
             <span className="font-medium">Nuevo Ingreso</span>
           </button>
           <button 
             onClick={() => setActiveScreen('gastos')}
-            className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl flex items-center justify-center gap-2 hover:shadow-lg transition-all duration-200 active:scale-95"
+            className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl flex items-center justify-center gap-2"
           >
             <Plus size={20} />
             <span className="font-medium">Nuevo Gasto</span>
           </button>
         </div>
       </div>
-
-      {/* Últimas transacciones */}
-      <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-800">Últimas Transacciones</h3>
-          <button 
-            onClick={() => setActiveScreen('estadisticas')}
-            className="text-blue-600 text-sm hover:text-blue-800 transition-colors"
-          >
-            Ver todas
-          </button>
-        </div>
-        <div className="space-y-2">
-          {todasTransacciones.map((transaccion) => (
-            <div key={transaccion.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-center">
-                <div className="flex-1">
-                  <p className="font-medium text-gray-800">{transaccion.descripcion}</p>
-                  <p className="text-sm text-gray-500">
-                    {new Date(transaccion.fecha).toLocaleDateString('es-ES')} • {transaccion.categoria}
-                  </p>
-                </div>
-                <span className={`font-bold text-lg ${transaccion.monto > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {transaccion.monto > 0 ? '+' : '-'}${Math.abs(transaccion.monto).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 };
 
-// Pantalla de Ingresos móvil
+// Versión simplificada de pantallas móviles
 const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
-  const [nuevoIngreso, setNuevoIngreso] = useState({ 
-    descripcion: '', 
-    monto: '', 
-    categoria: 'trabajo',
-    fecha: new Date().toISOString().split('T')[0]
-  });
+  const [nuevo, setNuevo] = useState({ descripcion: '', monto: '', categoria: 'trabajo' });
 
-  const agregarIngreso = () => {
-    if (nuevoIngreso.descripcion && nuevoIngreso.monto && nuevoIngreso.fecha) {
-      const nuevo = {
-        id: Date.now(),
-        descripcion: nuevoIngreso.descripcion,
-        monto: parseFloat(nuevoIngreso.monto),
-        fecha: nuevoIngreso.fecha,
-        categoria: nuevoIngreso.categoria
-      };
-      setIngresos([nuevo, ...ingresos]);
-      setNuevoIngreso({ descripcion: '', monto: '', categoria: 'trabajo', fecha: new Date().toISOString().split('T')[0] });
+  const agregar = () => {
+    if (nuevo.descripcion && nuevo.monto) {
+      setIngresos([...ingresos, { 
+        id: Date.now(), 
+        ...nuevo, 
+        monto: parseFloat(nuevo.monto),
+        fecha: new Date().toISOString().split('T')[0] 
+      }]);
+      setNuevo({ descripcion: '', monto: '', categoria: 'trabajo' });
     }
   };
 
-  const eliminarIngreso = (id) => {
-    setIngresos(ingresos.filter(ingreso => ingreso.id !== id));
-  };
-
-  const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
-
   return (
-    <div className="p-4 space-y-6 animate-slideInRight">
-      {/* Total */}
-      <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-        <div className="text-center">
-          <p className="text-sm text-green-600">Total de Ingresos</p>
-          <p className="text-2xl font-bold text-green-700">${totalIngresos.toLocaleString()}</p>
-        </div>
-      </div>
-
-      {/* Formulario */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Nuevo Ingreso</h3>
-        <div className="space-y-4">
+    <div className="p-4 space-y-6">
+      <div className="bg-white p-4 rounded-xl shadow-sm">
+        <h3 className="font-semibold mb-4">Nuevo Ingreso</h3>
+        <div className="space-y-3">
           <input
             type="text"
             placeholder="Descripción"
-            value={nuevoIngreso.descripcion}
-            onChange={(e) => setNuevoIngreso({...nuevoIngreso, descripcion: e.target.value})}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            value={nuevo.descripcion}
+            onChange={(e) => setNuevo({...nuevo, descripcion: e.target.value})}
+            className="w-full p-3 border rounded-lg"
           />
           <input
             type="number"
             placeholder="Monto"
-            value={nuevoIngreso.monto}
-            onChange={(e) => setNuevoIngreso({...nuevoIngreso, monto: e.target.value})}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+            value={nuevo.monto}
+            onChange={(e) => setNuevo({...nuevo, monto: e.target.value})}
+            className="w-full p-3 border rounded-lg"
           />
-          <button
-            onClick={agregarIngreso}
-            className="w-full bg-green-600 text-white p-3 rounded-lg font-medium hover:bg-green-700 transition-colors"
-          >
+          <button onClick={agregar} className="w-full bg-green-600 text-white p-3 rounded-lg">
             Agregar Ingreso
           </button>
         </div>
       </div>
-
-      {/* Lista */}
+      
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-800">Mis Ingresos ({ingresos.length})</h3>
         {ingresos.map((ingreso) => (
-          <div key={ingreso.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-center">
+          <div key={ingreso.id} className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between">
               <div>
-                <p className="font-medium text-gray-800">{ingreso.descripcion}</p>
-                <p className="text-sm text-gray-500">{ingreso.fecha} • {ingreso.categoria}</p>
+                <p className="font-medium">{ingreso.descripcion}</p>
+                <p className="text-sm text-gray-500">{ingreso.categoria}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-green-600">+${ingreso.monto.toLocaleString()}</span>
-                <button
-                  onClick={() => eliminarIngreso(ingreso.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              <span className="text-green-600 font-bold">+€{ingreso.monto}</span>
             </div>
           </div>
         ))}
@@ -814,91 +660,55 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
   );
 };
 
-// Pantalla de Gastos móvil
 const MobileGastosScreen = ({ gastos, setGastos }) => {
-  const [nuevoGasto, setNuevoGasto] = useState({ 
-    descripcion: '', 
-    monto: '', 
-    categoria: 'alimentacion',
-    fecha: new Date().toISOString().split('T')[0]
-  });
+  const [nuevo, setNuevo] = useState({ descripcion: '', monto: '', categoria: 'alimentacion' });
 
-  const agregarGasto = () => {
-    if (nuevoGasto.descripcion && nuevoGasto.monto && nuevoGasto.fecha) {
-      const nuevo = {
-        id: Date.now(),
-        descripcion: nuevoGasto.descripcion,
-        monto: -Math.abs(parseFloat(nuevoGasto.monto)),
-        fecha: nuevoGasto.fecha,
-        categoria: nuevoGasto.categoria
-      };
-      setGastos([nuevo, ...gastos]);
-      setNuevoGasto({ descripcion: '', monto: '', categoria: 'alimentacion', fecha: new Date().toISOString().split('T')[0] });
+  const agregar = () => {
+    if (nuevo.descripcion && nuevo.monto) {
+      setGastos([...gastos, { 
+        id: Date.now(), 
+        ...nuevo, 
+        monto: -Math.abs(parseFloat(nuevo.monto)),
+        fecha: new Date().toISOString().split('T')[0] 
+      }]);
+      setNuevo({ descripcion: '', monto: '', categoria: 'alimentacion' });
     }
   };
 
-  const eliminarGasto = (id) => {
-    setGastos(gastos.filter(gasto => gasto.id !== id));
-  };
-
-  const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
-
   return (
-    <div className="p-4 space-y-6 animate-slideInRight">
-      {/* Total */}
-      <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-        <div className="text-center">
-          <p className="text-sm text-red-600">Total de Gastos</p>
-          <p className="text-2xl font-bold text-red-700">${totalGastos.toLocaleString()}</p>
-        </div>
-      </div>
-
-      {/* Formulario */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-800 mb-4">Nuevo Gasto</h3>
-        <div className="space-y-4">
+    <div className="p-4 space-y-6">
+      <div className="bg-white p-4 rounded-xl shadow-sm">
+        <h3 className="font-semibold mb-4">Nuevo Gasto</h3>
+        <div className="space-y-3">
           <input
             type="text"
             placeholder="Descripción"
-            value={nuevoGasto.descripcion}
-            onChange={(e) => setNuevoGasto({...nuevoGasto, descripcion: e.target.value})}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            value={nuevo.descripcion}
+            onChange={(e) => setNuevo({...nuevo, descripcion: e.target.value})}
+            className="w-full p-3 border rounded-lg"
           />
           <input
             type="number"
             placeholder="Monto"
-            value={nuevoGasto.monto}
-            onChange={(e) => setNuevoGasto({...nuevoGasto, monto: e.target.value})}
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            value={nuevo.monto}
+            onChange={(e) => setNuevo({...nuevo, monto: e.target.value})}
+            className="w-full p-3 border rounded-lg"
           />
-          <button
-            onClick={agregarGasto}
-            className="w-full bg-red-600 text-white p-3 rounded-lg font-medium hover:bg-red-700 transition-colors"
-          >
+          <button onClick={agregar} className="w-full bg-red-600 text-white p-3 rounded-lg">
             Agregar Gasto
           </button>
         </div>
       </div>
-
-      {/* Lista */}
+      
       <div className="space-y-3">
-        <h3 className="text-lg font-semibold text-gray-800">Mis Gastos ({gastos.length})</h3>
         {gastos.map((gasto) => (
-          <div key={gasto.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-            <div className="flex justify-between items-center">
+          <div key={gasto.id} className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between">
               <div>
-                <p className="font-medium text-gray-800">{gasto.descripcion}</p>
-                <p className="text-sm text-gray-500">{gasto.fecha} • {gasto.categoria}</p>
+                <p className="font-medium">{gasto.descripcion}</p>
+                <p className="text-sm text-gray-500">{gasto.categoria}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-red-600">-${Math.abs(gasto.monto).toLocaleString()}</span>
-                <button
-                  onClick={() => eliminarGasto(gasto.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+              <span className="text-red-600 font-bold">-€{Math.abs(gasto.monto)}</span>
             </div>
           </div>
         ))}
@@ -907,252 +717,115 @@ const MobileGastosScreen = ({ gastos, setGastos }) => {
   );
 };
 
-// Pantalla de Estadísticas móvil
-const MobileEstadisticasScreen = ({ ingresos, gastos, objetivos }) => {
+const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
   const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
   const balance = totalIngresos - totalGastos;
 
-  const todasTransacciones = [...ingresos, ...gastos]
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-
   return (
-    <div className="p-4 space-y-6 animate-slideInRight">
-      {/* Resumen financiero */}
-      <div className="bg-gradient-to-br from-blue-50 to-purple-50 p-6 rounded-xl border border-blue-200">
-        <h3 className="text-lg font-semibold text-blue-800 mb-4">Resumen Financiero</h3>
-        
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Total Ingresos</p>
-              <p className="text-2xl font-bold text-green-600">${totalIngresos.toLocaleString()}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Total Gastos</p>
-              <p className="text-2xl font-bold text-red-600">${totalGastos.toLocaleString()}</p>
-            </div>
-          </div>
-          
-          <hr className="border-blue-200" />
-          
+    <div className="p-4 space-y-6">
+      <div className="bg-white p-6 rounded-xl shadow-sm">
+        <h3 className="font-semibold mb-4">Resumen Financiero</h3>
+        <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="text-center">
-            <p className="text-sm text-gray-600">Balance Final</p>
-            <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {balance >= 0 ? '+' : ''}${balance.toLocaleString()}
-            </p>
+            <p className="text-sm text-gray-600">Ingresos</p>
+            <p className="text-2xl font-bold text-green-600">€{totalIngresos.toFixed(2)}</p>
+          </div>
+          <div className="text-center">
+            <p className="text-sm text-gray-600">Gastos</p>
+            <p className="text-2xl font-bold text-red-600">€{totalGastos.toFixed(2)}</p>
           </div>
         </div>
-      </div>
-
-      {/* Historial completo */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <h4 className="font-medium text-gray-800 mb-4">Todas las Transacciones ({todasTransacciones.length})</h4>
-        {todasTransacciones.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <BarChart3 size={48} className="mx-auto mb-3 opacity-50" />
-            <p>No hay transacciones registradas</p>
-            <p className="text-sm">¡Comienza agregando ingresos y gastos!</p>
-          </div>
-        ) : (
-          <div className="space-y-2 max-h-96 overflow-y-auto">
-            {todasTransacciones.map((transaccion) => (
-              <div key={transaccion.id} className="p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-medium text-gray-800">{transaccion.descripcion}</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(transaccion.fecha).toLocaleDateString('es-ES')} • {transaccion.categoria}
-                    </p>
-                  </div>
-                  <span className={`font-bold ${transaccion.monto > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {transaccion.monto > 0 ? '+' : '-'}${Math.abs(transaccion.monto).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <hr className="my-4" />
+        <div className="text-center">
+          <p className="text-sm text-gray-600">Balance</p>
+          <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            €{balance.toFixed(2)}
+          </p>
+        </div>
       </div>
     </div>
   );
 };
 
-// Pantalla de Perfil móvil
 const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
-  const [nuevoObjetivo, setNuevoObjetivo] = useState({ nombre: '', meta: '', actual: 0 });
-  const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [nuevo, setNuevo] = useState({ nombre: '', meta: '' });
 
-  const agregarObjetivo = () => {
-    if (nuevoObjetivo.nombre && nuevoObjetivo.meta) {
-      const nuevo = {
-        id: Date.now(),
-        nombre: nuevoObjetivo.nombre,
-        meta: parseFloat(nuevoObjetivo.meta),
-        actual: 0
-      };
-      setObjetivos([...objetivos, nuevo]);
-      setNuevoObjetivo({ nombre: '', meta: '', actual: 0 });
-      setMostrarFormulario(false);
+  const agregar = () => {
+    if (nuevo.nombre && nuevo.meta) {
+      setObjetivos([...objetivos, { 
+        id: Date.now(), 
+        ...nuevo, 
+        meta: parseFloat(nuevo.meta),
+        actual: 0 
+      }]);
+      setNuevo({ nombre: '', meta: '' });
     }
   };
 
-  const eliminarObjetivo = (id) => {
-    setObjetivos(objetivos.filter(obj => obj.id !== id));
-  };
-
   return (
-    <div className="p-4 space-y-6 animate-slideInRight">
-      {/* Header del perfil */}
+    <div className="p-4 space-y-6">
       <div className="text-center">
-        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center shadow-lg">
+        <div className="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
           <User size={48} className="text-white" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-800">Mi Perfil Financiero</h2>
-        <p className="text-gray-600">Gestiona tus objetivos y configuración</p>
+        <h2 className="text-2xl font-bold">Mi Perfil</h2>
       </div>
 
-      {/* Gestión de objetivos */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">Mis Objetivos</h3>
-          <button
-            onClick={() => setMostrarFormulario(!mostrarFormulario)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <Plus size={16} />
-            Nuevo Objetivo
+      <div className="bg-white p-4 rounded-xl shadow-sm">
+        <h3 className="font-semibold mb-4">Nuevo Objetivo</h3>
+        <div className="space-y-3">
+          <input
+            type="text"
+            placeholder="Nombre del objetivo"
+            value={nuevo.nombre}
+            onChange={(e) => setNuevo({...nuevo, nombre: e.target.value})}
+            className="w-full p-3 border rounded-lg"
+          />
+          <input
+            type="number"
+            placeholder="Meta en €"
+            value={nuevo.meta}
+            onChange={(e) => setNuevo({...nuevo, meta: e.target.value})}
+            className="w-full p-3 border rounded-lg"
+          />
+          <button onClick={agregar} className="w-full bg-blue-600 text-white p-3 rounded-lg">
+            Crear Objetivo
           </button>
         </div>
-
-        {/* Formulario nuevo objetivo */}
-        {mostrarFormulario && (
-          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
-            <div className="space-y-3">
-              <input
-                type="text"
-                placeholder="Nombre del objetivo"
-                value={nuevoObjetivo.nombre}
-                onChange={(e) => setNuevoObjetivo({...nuevoObjetivo, nombre: e.target.value})}
-                className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <input
-                type="number"
-                placeholder="Meta en $"
-                value={nuevoObjetivo.meta}
-                onChange={(e) => setNuevoObjetivo({...nuevoObjetivo, meta: e.target.value})}
-                className="w-full p-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-              <div className="flex gap-3">
-                <button
-                  onClick={agregarObjetivo}
-                  className="flex-1 bg-blue-600 text-white p-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Crear Objetivo
-                </button>
-                <button
-                  onClick={() => {
-                    setMostrarFormulario(false);
-                    setNuevoObjetivo({ nombre: '', meta: '', actual: 0 });
-                  }}
-                  className="px-6 bg-gray-500 text-white p-3 rounded-lg font-medium hover:bg-gray-600 transition-colors"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Lista de objetivos */}
-        {objetivos.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            <Target size={48} className="mx-auto mb-3 opacity-50" />
-            <p>No tienes objetivos financieros aún</p>
-            <p className="text-sm">¡Crea tu primer objetivo arriba!</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {objetivos.map((objetivo) => {
-              const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
-              return (
-                <div key={objetivo.id} className="p-4 bg-gray-50 rounded-lg">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h4 className="font-medium text-gray-800">{objetivo.nombre}</h4>
-                      <p className="text-sm text-gray-600">
-                        Meta: ${objetivo.meta.toLocaleString()}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => eliminarObjetivo(objetivo.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                  
-                  <div className="mb-2">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Progreso: {progreso.toFixed(1)}%</span>
-                      <span>${objetivo.actual.toLocaleString()} / ${objetivo.meta.toLocaleString()}</span>
-                    </div>
-                    <div className="bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${progreso}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
 };
 
-// Vista móvil completa
 const MobileDashboard = () => {
   const [activeScreen, setActiveScreen] = useState('dashboard');
-  const [ingresos, setIngresos] = useLocalStorage('mobile_ingresos', []);
-  const [gastos, setGastos] = useLocalStorage('mobile_gastos', []);
+  const [ingresos, setIngresos] = useLocalStorage('mobile_ingresos', datosEjemplo.ingresos);
+  const [gastos, setGastos] = useLocalStorage('mobile_gastos', datosEjemplo.gastos);
   const [objetivos, setObjetivos] = useLocalStorage('mobile_objetivos', []);
 
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const screen = urlParams.get('screen');
-    if (screen) {
-      setActiveScreen(screen);
-    }
-  }, []);
-
   const renderScreen = () => {
-    const screenProps = { ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos };
-    
     switch (activeScreen) {
       case 'dashboard':
-        return <MobileDashboardScreen setActiveScreen={setActiveScreen} {...screenProps} />;
+        return <MobileDashboardScreen setActiveScreen={setActiveScreen} ingresos={ingresos} gastos={gastos} objetivos={objetivos} />;
       case 'ingresos':
         return <MobileIngresosScreen ingresos={ingresos} setIngresos={setIngresos} />;
       case 'gastos':
         return <MobileGastosScreen gastos={gastos} setGastos={setGastos} />;
       case 'estadisticas':
-        return <MobileEstadisticasScreen {...screenProps} />;
+        return <MobileEstadisticasScreen ingresos={ingresos} gastos={gastos} />;
       case 'perfil':
         return <MobilePerfilScreen objetivos={objetivos} setObjetivos={setObjetivos} />;
       default:
-        return <MobileDashboardScreen setActiveScreen={setActiveScreen} {...screenProps} />;
+        return <MobileDashboardScreen setActiveScreen={setActiveScreen} ingresos={ingresos} gastos={gastos} objetivos={objetivos} />;
     }
   };
 
   const getScreenTitle = () => {
     const titles = {
       'dashboard': 'Mi Dashboard',
-      'ingresos': 'Gestión de Ingresos',
-      'gastos': 'Gestión de Gastos',
+      'ingresos': 'Ingresos',
+      'gastos': 'Gastos',
       'estadisticas': 'Estadísticas',
       'perfil': 'Perfil'
     };
@@ -1183,11 +856,14 @@ const MobileDashboard = () => {
 // COMPONENTE PRINCIPAL
 // ===========================================
 
-const HybridDashboardApp = () => {
+const App = () => {
   const [forceView, setForceView] = useLocalStorage('preferredView', null);
+  const [ingresos, setIngresos] = useLocalStorage('ingresos', datosEjemplo.ingresos);
+  const [gastos, setGastos] = useLocalStorage('gastos', datosEjemplo.gastos);
+  const [objetivos, setObjetivos] = useLocalStorage('objetivos', []);
+  
   const context = useViewContext();
 
-  // Decidir qué vista mostrar
   const shouldShowMobile = forceView === 'mobile' || 
                           (forceView !== 'web' && (context.isMobile || context.isPWA));
 
@@ -1199,39 +875,27 @@ const HybridDashboardApp = () => {
 
   return (
     <>
-      {/* Toggle de vista manual */}
       <ViewToggle 
         currentView={currentView} 
         onViewChange={handleViewChange}
         context={context}
       />
 
-      {/* Renderizar la vista apropiada */}
       {shouldShowMobile ? (
         <MobileDashboard />
       ) : (
-        <WebDashboard />
+        <WebDashboard 
+          ingresos={ingresos}
+          setIngresos={setIngresos}
+          gastos={gastos}
+          setGastos={setGastos}
+          objetivos={objetivos}
+          setObjetivos={setObjetivos}
+        />
       )}
-
-      {/* Estilos para animaciones */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideInRight {
-          from { opacity: 0; transform: translateX(30px); }
-          to { opacity: 1; transform: translateX(0); }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-        .animate-slideInRight {
-          animation: slideInRight 0.3s ease-out;
-        }
-      `}</style>
     </>
   );
 };
 
-export default HybridDashboardApp;
+export default App;
+
