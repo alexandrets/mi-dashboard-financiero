@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, LineChart, Line } from 'recharts';
 
 // Hook para localStorage 
 const useLocalStorage = (key, initialValue) => {
@@ -166,20 +167,11 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
     }
   };
 
-  // Gastos por categoría para el gráfico simple
+  // Gastos por categoría para los gráficos
   const gastosPorCategoria = gastos.reduce((acc, gasto) => {
     acc[gasto.categoria] = (acc[gasto.categoria] || 0) + Math.abs(gasto.monto);
     return acc;
   }, {});
-
-  const categoriaColores = {
-    'alimentacion': 'bg-orange-500',
-    'transporte': 'bg-blue-500',
-    'entretenimiento': 'bg-purple-500',
-    'servicios': 'bg-cyan-500',
-    'salud': 'bg-green-500',
-    'otros': 'bg-gray-500'
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 via-blue-100 to-purple-200">
@@ -239,54 +231,185 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Gráfico de gastos por categoría */}
-          <div className="lg:col-span-2">
+          {/* Gráficos mejorados */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Gráfico de dona - Gastos por categoría */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">📊 Gastos por Categoría</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-6">🍩 Gastos por Categoría</h3>
               
               {Object.keys(gastosPorCategoria).length > 0 ? (
-                <div className="space-y-4">
-                  {Object.entries(gastosPorCategoria)
-                    .sort(([,a], [,b]) => b - a)
-                    .map(([categoria, monto]) => {
-                      const porcentaje = (monto / totalGastos) * 100;
-                      const emoji = {
-                        'alimentacion': '🍕',
-                        'transporte': '🚗',
-                        'entretenimiento': '🎬',
-                        'servicios': '⚡',
-                        'salud': '🏥',
-                        'otros': '📦'
-                      }[categoria] || '📦';
-                      
-                      return (
-                        <div key={categoria}>
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium capitalize flex items-center gap-2">
-                              <span>{emoji}</span>
-                              {categoria}
-                            </span>
-                            <span className="text-sm text-gray-600">
-                              €{monto.toFixed(2)} ({porcentaje.toFixed(1)}%)
-                            </span>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Gráfico de dona */}
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={Object.entries(gastosPorCategoria).map(([categoria, monto]) => ({
+                            name: categoria,
+                            value: monto,
+                            emoji: {
+                              'alimentacion': '🍕',
+                              'transporte': '🚗', 
+                              'entretenimiento': '🎬',
+                              'servicios': '⚡',
+                              'salud': '🏥',
+                              'otros': '📦'
+                            }[categoria] || '📦'
+                          }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {Object.entries(gastosPorCategoria).map(([categoria], index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={
+                                categoria === 'alimentacion' ? '#f97316' :
+                                categoria === 'transporte' ? '#3b82f6' :
+                                categoria === 'entretenimiento' ? '#8b5cf6' :
+                                categoria === 'servicios' ? '#06b6d4' :
+                                categoria === 'salud' ? '#10b981' :
+                                '#6b7280'
+                              }
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          formatter={(value) => [`€${value.toFixed(2)}`, 'Gasto']}
+                          labelFormatter={(label) => `${
+                            {
+                              'alimentacion': '🍕',
+                              'transporte': '🚗',
+                              'entretenimiento': '🎬', 
+                              'servicios': '⚡',
+                              'salud': '🏥',
+                              'otros': '📦'
+                            }[label] || '📦'
+                          } ${label.charAt(0).toUpperCase() + label.slice(1)}`}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  {/* Leyenda con detalles */}
+                  <div className="space-y-3">
+                    {Object.entries(gastosPorCategoria)
+                      .sort(([,a], [,b]) => b - a)
+                      .map(([categoria, monto]) => {
+                        const porcentaje = (monto / totalGastos) * 100;
+                        const emoji = {
+                          'alimentacion': '🍕',
+                          'transporte': '🚗',
+                          'entretenimiento': '🎬',
+                          'servicios': '⚡',
+                          'salud': '🏥',
+                          'otros': '📦'
+                        }[categoria] || '📦';
+                        
+                        const color = 
+                          categoria === 'alimentacion' ? '#f97316' :
+                          categoria === 'transporte' ? '#3b82f6' :
+                          categoria === 'entretenimiento' ? '#8b5cf6' :
+                          categoria === 'servicios' ? '#06b6d4' :
+                          categoria === 'salud' ? '#10b981' :
+                          '#6b7280';
+                        
+                        return (
+                          <div key={categoria} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                            <div className="flex items-center gap-3">
+                              <div 
+                                className="w-4 h-4 rounded-full"
+                                style={{ backgroundColor: color }}
+                              ></div>
+                              <span className="font-medium capitalize flex items-center gap-2">
+                                <span>{emoji}</span>
+                                {categoria}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-bold text-gray-800">€{monto.toFixed(2)}</div>
+                              <div className="text-sm text-gray-500">{porcentaje.toFixed(1)}%</div>
+                            </div>
                           </div>
-                          <div className="bg-gray-200 rounded-full h-3">
-                            <div 
-                              className={`h-3 rounded-full transition-all duration-500 ${categoriaColores[categoria] || 'bg-gray-500'}`}
-                              style={{ width: `${porcentaje}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">
-                  <div className="text-6xl mb-4">📊</div>
+                  <div className="text-6xl mb-4">🍩</div>
                   <p>No hay gastos registrados aún</p>
                   <p className="text-sm">¡Agrega tu primer gasto para ver el análisis!</p>
                 </div>
               )}
+            </div>
+
+            {/* Gráfico de barras - Comparación Ingresos vs Gastos */}
+            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+              <h3 className="text-xl font-bold text-gray-800 mb-6">📊 Comparación Mensual</h3>
+              
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={[
+                      {
+                        mes: 'Este Mes',
+                        ingresos: totalIngresos,
+                        gastos: totalGastos,
+                        balance: balance
+                      }
+                    ]}
+                    margin={{
+                      top: 20,
+                      right: 30,
+                      left: 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="mes" stroke="#6b7280" />
+                    <YAxis stroke="#6b7280" />
+                    <Tooltip 
+                      formatter={(value, name) => [
+                        `€${value.toFixed(2)}`, 
+                        name === 'ingresos' ? '📈 Ingresos' : 
+                        name === 'gastos' ? '📉 Gastos' : '⚖️ Balance'
+                      ]}
+                      labelStyle={{ color: '#374151' }}
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '8px'
+                      }}
+                    />
+                    <Bar dataKey="ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="gastos" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              
+              <div className="mt-4 grid grid-cols-3 gap-4 text-center">
+                <div className="p-3 bg-green-50 rounded-lg">
+                  <div className="text-green-600 font-bold">📈 Ingresos</div>
+                  <div className="text-2xl font-bold text-green-700">€{totalIngresos.toFixed(2)}</div>
+                </div>
+                <div className="p-3 bg-red-50 rounded-lg">
+                  <div className="text-red-600 font-bold">📉 Gastos</div>
+                  <div className="text-2xl font-bold text-red-700">€{totalGastos.toFixed(2)}</div>
+                </div>
+                <div className={`p-3 rounded-lg ${balance >= 0 ? 'bg-blue-50' : 'bg-yellow-50'}`}>
+                  <div className={`font-bold ${balance >= 0 ? 'text-blue-600' : 'text-yellow-600'}`}>
+                    ⚖️ Balance
+                  </div>
+                  <div className={`text-2xl font-bold ${balance >= 0 ? 'text-blue-700' : 'text-yellow-700'}`}>
+                    €{balance.toFixed(2)}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -733,6 +856,12 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
   const balance = totalIngresos - totalGastos;
 
+  // Gastos por categoría para gráfico móvil
+  const gastosPorCategoria = gastos.reduce((acc, gasto) => {
+    acc[gasto.categoria] = (acc[gasto.categoria] || 0) + Math.abs(gasto.monto);
+    return acc;
+  }, {});
+
   return (
     <div className="p-4 space-y-6">
       <div className="bg-white p-6 rounded-xl shadow-sm">
@@ -755,6 +884,97 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
           </p>
         </div>
       </div>
+
+      {/* Gráfico de dona móvil */}
+      {Object.keys(gastosPorCategoria).length > 0 && (
+        <div className="bg-white p-6 rounded-xl shadow-sm">
+          <h3 className="font-semibold mb-4">🍩 Gastos por Categoría</h3>
+          <div className="h-48 mb-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={Object.entries(gastosPorCategoria).map(([categoria, monto]) => ({
+                    name: categoria,
+                    value: monto,
+                    emoji: {
+                      'alimentacion': '🍕',
+                      'transporte': '🚗', 
+                      'entretenimiento': '🎬',
+                      'servicios': '⚡',
+                      'salud': '🏥',
+                      'otros': '📦'
+                    }[categoria] || '📦'
+                  }))}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={80}
+                  paddingAngle={2}
+                  dataKey="value"
+                >
+                  {Object.entries(gastosPorCategoria).map(([categoria], index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={
+                        categoria === 'alimentacion' ? '#f97316' :
+                        categoria === 'transporte' ? '#3b82f6' :
+                        categoria === 'entretenimiento' ? '#8b5cf6' :
+                        categoria === 'servicios' ? '#06b6d4' :
+                        categoria === 'salud' ? '#10b981' :
+                        '#6b7280'
+                      }
+                    />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  formatter={(value) => [`€${value.toFixed(2)}`, 'Gasto']}
+                  labelFormatter={(label) => `${
+                    {
+                      'alimentacion': '🍕',
+                      'transporte': '🚗',
+                      'entretenimiento': '🎬', 
+                      'servicios': '⚡',
+                      'salud': '🏥',
+                      'otros': '📦'
+                    }[label] || '📦'
+                  } ${label.charAt(0).toUpperCase() + label.slice(1)}`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          
+          {/* Lista de categorías */}
+          <div className="space-y-2">
+            {Object.entries(gastosPorCategoria)
+              .sort(([,a], [,b]) => b - a)
+              .slice(0, 4) // Solo top 4 en móvil
+              .map(([categoria, monto]) => {
+                const porcentaje = (monto / totalGastos) * 100;
+                const emoji = {
+                  'alimentacion': '🍕',
+                  'transporte': '🚗',
+                  'entretenimiento': '🎬',
+                  'servicios': '⚡',
+                  'salud': '🏥',
+                  'otros': '📦'
+                }[categoria] || '📦';
+                
+                return (
+                  <div key={categoria} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                    <div className="flex items-center gap-2">
+                      <span>{emoji}</span>
+                      <span className="text-sm font-medium capitalize">{categoria}</span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-bold">€{monto.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500">{porcentaje.toFixed(1)}%</div>
+                    </div>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

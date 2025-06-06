@@ -1,310 +1,291 @@
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
-import { useExpenses } from '../hooks/useExpenses'
+import React, { useState } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
-// Tooltip personalizado para la evolución del saldo
-const CustomTooltip = ({ active, payload, label }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload
-    return (
-      <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200">
-        <div className="text-sm font-medium text-gray-800 mb-2">
-          {data.date}
-        </div>
-        <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-600">Saldo disponible:</span>
-            <span className={`text-lg font-bold ${
-              data.balance >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
-              €{data.balance.toFixed(2)}
-            </span>
-          </div>
-          {data.transaction && (
-            <div className="pt-2 border-t border-gray-100">
-              <div className="text-xs text-gray-500 mb-1">Último movimiento:</div>
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-gray-700 truncate max-w-32">
-                  {data.transaction.description}
-                </span>
-                <span className={`text-xs font-bold ${
-                  data.transaction.type === 'ingreso' ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {data.transaction.type === 'ingreso' ? '+' : '-'}€{data.transaction.amount.toFixed(2)}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-  return null
-}
+const TrendsChart = ({ ingresos = [], gastos = [] }) => {
+  const [chartType, setChartType] = useState('line'); // 'line' o 'area'
+  const [timeRange, setTimeRange] = useState('6m'); // '1m', '3m', '6m', '1y'
 
-function TrendsChart() {
-  const { transactions, loading, error } = useExpenses()
+  // Función para obtener datos agrupados por mes
+  const getMonthlyData = () => {
+    const monthlyData = {};
+    const now = new Date();
+    const monthsToShow = timeRange === '1m' ? 1 : timeRange === '3m' ? 3 : timeRange === '6m' ? 6 : 12;
 
-  // Calcular la evolución del saldo día a día
-  const calculateBalanceEvolution = () => {
-    if (transactions.length === 0) return []
-
-    // Ordenar transacciones por fecha
-    const sortedTransactions = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date))
-    
-    // Calcular balance acumulativo
-    let runningBalance = 0
-    const balanceData = []
-    
-    // Agrupar transacciones por día
-    const transactionsByDay = {}
-    sortedTransactions.forEach(transaction => {
-      const dateKey = new Date(transaction.date).toDateString()
-      if (!transactionsByDay[dateKey]) {
-        transactionsByDay[dateKey] = []
-      }
-      transactionsByDay[dateKey].push(transaction)
-    })
-
-    // Calcular balance para cada día con transacciones
-    Object.keys(transactionsByDay).forEach(dateKey => {
-      const dayTransactions = transactionsByDay[dateKey]
-      let dayBalance = runningBalance
+    // Inicializar los últimos meses
+    for (let i = monthsToShow - 1; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthName = date.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
       
-      dayTransactions.forEach(transaction => {
-        if (transaction.type === 'ingreso') {
-          dayBalance += transaction.amount
-        } else {
-          dayBalance -= transaction.amount
-        }
-      })
+      monthlyData[key] = {
+        mes: monthName,
+        ingresos: 0,
+        gastos: 0,
+        balance: 0,
+        fecha: date
+      };
+    }
 
-      const date = new Date(dateKey)
-      balanceData.push({
-        date: date.toLocaleDateString('es-ES', { 
-          day: '2-digit', 
-          month: '2-digit' 
-        }),
-        fullDate: date,
-        balance: dayBalance,
-        transaction: dayTransactions[dayTransactions.length - 1] // Última transacción del día
-      })
+    // Agregar ingresos
+    ingresos.forEach(ingreso => {
+      const date = new Date(ingreso.fecha);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData[key]) {
+        monthlyData[key].ingresos += ingreso.monto;
+      }
+    });
 
-      runningBalance = dayBalance
-    })
+    // Agregar gastos
+    gastos.forEach(gasto => {
+      const date = new Date(gasto.fecha);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      if (monthlyData[key]) {
+        monthlyData[key].gastos += Math.abs(gasto.monto);
+      }
+    });
 
-    return balanceData.slice(-30) // Últimos 30 puntos de datos
-  }
+    // Calcular balance
+    Object.keys(monthlyData).forEach(key => {
+      monthlyData[key].balance = monthlyData[key].ingresos - monthlyData[key].gastos;
+    });
 
-  const balanceData = calculateBalanceEvolution()
+    return Object.values(monthlyData).sort((a, b) => a.fecha - b.fecha);
+  };
 
-  if (loading) {
+  const data = getMonthlyData();
+
+  // Tooltip personalizado
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-4 rounded-lg shadow-lg border border-gray-200">
+          <p className="font-semibold text-gray-800 mb-2">{label}</p>
+          {payload.map((entry, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm">
+              <div 
+                className="w-3 h-3 rounded-full"
+                style={{ backgroundColor: entry.color }}
+              ></div>
+              <span className="capitalize">{entry.dataKey}:</span>
+              <span className="font-bold">
+                €{Math.abs(entry.value).toFixed(2)}
+                {entry.dataKey === 'balance' && (
+                  <span className={entry.value >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    {entry.value >= 0 ? ' 📈' : ' 📉'}
+                  </span>
+                )}
+              </span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Calcular estadísticas
+  const stats = {
+    totalIngresos: data.reduce((sum, item) => sum + item.ingresos, 0),
+    totalGastos: data.reduce((sum, item) => sum + item.gastos, 0),
+    promedioIngresos: data.reduce((sum, item) => sum + item.ingresos, 0) / data.length,
+    promedioGastos: data.reduce((sum, item) => sum + item.gastos, 0) / data.length,
+    mejorMes: data.reduce((best, current) => current.balance > best.balance ? current : best, data[0]),
+    peorMes: data.reduce((worst, current) => current.balance < worst.balance ? current : worst, data[0])
+  };
+
+  const formatYAxis = (value) => {
+    if (value >= 1000) {
+      return `€${(value / 1000).toFixed(1)}k`;
+    }
+    return `€${value}`;
+  };
+
+  if (data.length === 0 || data.every(item => item.ingresos === 0 && item.gastos === 0)) {
     return (
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        <div className="animate-pulse">
-          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4"></div>
-          <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+        <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+          <span>📈</span>
+          Tendencias Financieras
+        </h3>
+        <div className="text-center py-12 text-gray-500">
+          <div className="text-6xl mb-4">📈</div>
+          <p className="text-lg">No hay datos suficientes</p>
+          <p className="text-sm">Agrega más transacciones para ver las tendencias</p>
         </div>
       </div>
-    )
+    );
   }
-
-  if (error || balanceData.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center">
-            <span className="text-white text-lg">📈</span>
-          </div>
-          <h2 className="text-xl font-bold text-gray-800">
-            Evolución del Saldo
-          </h2>
-        </div>
-        
-        <div className="text-center py-12">
-          <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
-            <span className="text-4xl">📊</span>
-          </div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-2">
-            No hay suficientes datos
-          </h3>
-          <p className="text-gray-600">
-            Agrega más transacciones para ver la evolución de tu saldo
-          </p>
-        </div>
-      </div>
-    )
-  }
-
-  const currentBalance = balanceData[balanceData.length - 1]?.balance || 0
-  const previousBalance = balanceData[balanceData.length - 2]?.balance || currentBalance
-  const balanceChange = currentBalance - previousBalance
-  const isPositiveChange = balanceChange >= 0
-
-  // Determinar el color del área basado en la tendencia general
-  const firstBalance = balanceData[0]?.balance || 0
-  const lastBalance = currentBalance
-  const overallTrend = lastBalance >= firstBalance
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center">
-            <span className="text-white text-lg">📈</span>
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">
-              Evolución del Saldo
-            </h2>
-            <p className="text-gray-500 text-sm">
-              Últimos {balanceData.length} movimientos
-            </p>
-          </div>
-        </div>
+    <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+      {/* Header con controles */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+          <span>📈</span>
+          Tendencias Financieras
+        </h3>
         
-        {/* Indicadores de tendencia */}
-        <div className="text-right">
-          <div className={`text-2xl font-bold ${
-            currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            €{currentBalance.toFixed(2)}
+        <div className="flex gap-2">
+          {/* Selector de rango temporal */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            {[
+              { key: '1m', label: '1M' },
+              { key: '3m', label: '3M' },
+              { key: '6m', label: '6M' },
+              { key: '1y', label: '1A' }
+            ].map(range => (
+              <button
+                key={range.key}
+                onClick={() => setTimeRange(range.key)}
+                className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                  timeRange === range.key 
+                    ? 'bg-white text-blue-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {range.label}
+              </button>
+            ))}
           </div>
-          <div className={`text-sm flex items-center justify-end space-x-1 ${
-            isPositiveChange ? 'text-green-600' : 'text-red-600'
-          }`}>
-            <span>{isPositiveChange ? '↗️' : '↘️'}</span>
-            <span>
-              {isPositiveChange ? '+' : ''}€{balanceChange.toFixed(2)}
-            </span>
+
+          {/* Selector de tipo de gráfico */}
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setChartType('line')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                chartType === 'line' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              📊 Líneas
+            </button>
+            <button
+              onClick={() => setChartType('area')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-colors ${
+                chartType === 'area' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              🎯 Áreas
+            </button>
           </div>
         </div>
       </div>
 
       {/* Gráfico */}
-      <div className="relative">
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart
-            data={balanceData}
-            margin={{
-              top: 10,
-              right: 30,
-              left: 20,
-              bottom: 5,
-            }}
-          >
-            <defs>
-              <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop 
-                  offset="5%" 
-                  stopColor={overallTrend ? "#10b981" : "#ef4444"} 
-                  stopOpacity={0.3}
-                />
-                <stop 
-                  offset="95%" 
-                  stopColor={overallTrend ? "#10b981" : "#ef4444"} 
-                  stopOpacity={0.05}
-                />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis 
-              dataKey="date" 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12, fill: '#6b7280' }}
-            />
-            <YAxis 
-              axisLine={false}
-              tickLine={false}
-              tick={{ fontSize: 12, fill: '#6b7280' }}
-              tickFormatter={(value) => `€${value.toFixed(0)}`}
-            />
-            <Tooltip content={<CustomTooltip />} />
-            <Area
-              type="monotone"
-              dataKey="balance"
-              stroke={overallTrend ? "#10b981" : "#ef4444"}
-              strokeWidth={3}
-              fill="url(#balanceGradient)"
-              dot={{
-                r: 4,
-                fill: overallTrend ? "#10b981" : "#ef4444",
-                strokeWidth: 2,
-                stroke: "#ffffff"
-              }}
-              activeDot={{
-                r: 6,
-                fill: overallTrend ? "#059669" : "#dc2626",
-                strokeWidth: 2,
-                stroke: "#ffffff"
-              }}
-            />
-          </AreaChart>
+      <div className="h-80 mb-6">
+        <ResponsiveContainer width="100%" height="100%">
+          {chartType === 'line' ? (
+            <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="mes" 
+                stroke="#6b7280"
+                fontSize={12}
+              />
+              <YAxis 
+                stroke="#6b7280"
+                fontSize={12}
+                tickFormatter={formatYAxis}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Line 
+                type="monotone" 
+                dataKey="ingresos" 
+                stroke="#10b981" 
+                strokeWidth={3}
+                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2 }}
+                name="Ingresos"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="gastos" 
+                stroke="#ef4444" 
+                strokeWidth={3}
+                dot={{ fill: '#ef4444', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2 }}
+                name="Gastos"
+              />
+              <Line 
+                type="monotone" 
+                dataKey="balance" 
+                stroke="#3b82f6" 
+                strokeWidth={3}
+                strokeDasharray="5 5"
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
+                name="Balance"
+              />
+            </LineChart>
+          ) : (
+            <AreaChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="mes" 
+                stroke="#6b7280"
+                fontSize={12}
+              />
+              <YAxis 
+                stroke="#6b7280"
+                fontSize={12}
+                tickFormatter={formatYAxis}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              <Area 
+                type="monotone" 
+                dataKey="ingresos" 
+                stackId="1"
+                stroke="#10b981" 
+                fill="#10b981"
+                fillOpacity={0.6}
+                name="Ingresos"
+              />
+              <Area 
+                type="monotone" 
+                dataKey="gastos" 
+                stackId="2"
+                stroke="#ef4444" 
+                fill="#ef4444"
+                fillOpacity={0.6}
+                name="Gastos"
+              />
+            </AreaChart>
+          )}
         </ResponsiveContainer>
-
-        {/* Línea de referencia en 0 */}
-        {Math.min(...balanceData.map(d => d.balance)) < 0 && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div 
-              className="absolute w-full border-t border-dashed border-gray-400"
-              style={{ 
-                top: `${((Math.max(...balanceData.map(d => d.balance)) - 0) / 
-                  (Math.max(...balanceData.map(d => d.balance)) - Math.min(...balanceData.map(d => d.balance)))) * 100}%` 
-              }}
-            ></div>
-          </div>
-        )}
       </div>
 
-      {/* Estadísticas adicionales */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-gray-100">
-        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-          <div className="text-blue-600 text-sm font-medium mb-1">💰 Saldo Actual</div>
-          <div className={`text-lg font-bold ${
-            currentBalance >= 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            €{currentBalance.toFixed(2)}
-          </div>
+      {/* Estadísticas resumidas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+          <div className="text-sm text-green-600 font-medium">💰 Promedio Ingresos</div>
+          <div className="text-lg font-bold text-green-700">€{stats.promedioIngresos.toFixed(0)}</div>
         </div>
         
-        <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-          <div className="text-green-600 text-sm font-medium mb-1">📈 Saldo Máximo</div>
-          <div className="text-lg font-bold text-green-600">
-            €{Math.max(...balanceData.map(d => d.balance)).toFixed(2)}
-          </div>
+        <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+          <div className="text-sm text-red-600 font-medium">💸 Promedio Gastos</div>
+          <div className="text-lg font-bold text-red-700">€{stats.promedioGastos.toFixed(0)}</div>
         </div>
         
-        <div className="bg-red-50 rounded-lg p-3 border border-red-200">
-          <div className="text-red-600 text-sm font-medium mb-1">📉 Saldo Mínimo</div>
-          <div className="text-lg font-bold text-red-600">
-            €{Math.min(...balanceData.map(d => d.balance)).toFixed(2)}
+        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-sm text-blue-600 font-medium">📈 Mejor Mes</div>
+          <div className="text-lg font-bold text-blue-700">{stats.mejorMes?.mes}</div>
+          <div className="text-xs text-blue-600">€{stats.mejorMes?.balance.toFixed(0)}</div>
+        </div>
+        
+        <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+          <div className="text-sm text-purple-600 font-medium">📊 Tendencia</div>
+          <div className="text-lg font-bold text-purple-700">
+            {data.length > 1 && data[data.length - 1].balance > data[0].balance ? '📈 Positiva' : '📉 Mejorando'}
           </div>
-        </div>
-      </div>
-
-      {/* Análisis de tendencia */}
-      <div className={`mt-4 p-3 rounded-lg border ${
-        overallTrend 
-          ? 'bg-green-50 border-green-200' 
-          : 'bg-red-50 border-red-200'
-      }`}>
-        <div className={`text-sm font-medium ${
-          overallTrend ? 'text-green-800' : 'text-red-800'
-        }`}>
-          {overallTrend ? '✅ Tendencia positiva' : '⚠️ Tendencia descendente'}
-        </div>
-        <div className={`text-xs mt-1 ${
-          overallTrend ? 'text-green-700' : 'text-red-700'
-        }`}>
-          {overallTrend 
-            ? 'Tu saldo ha mejorado en el período mostrado. ¡Sigue así!'
-            : 'Tu saldo ha disminuido. Considera revisar tus gastos.'
-          }
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default TrendsChart
+export default TrendsChart;
