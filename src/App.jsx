@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Budgets from './components/Budgets';
+import SavingsGoals from './components/SavingsGoals';
 
 // Hook mejorado para localStorage con sincronización automática
 const useLocalStorage = (key, initialValue) => {
@@ -206,7 +207,7 @@ const LogoutButton = () => {
 // VISTA WEB/DESKTOP
 // ===========================================
 
-const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos }) => {
+const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos }) => {
   const [nuevoIngreso, setNuevoIngreso] = useState({ 
     descripcion: '', 
     monto: '', 
@@ -702,38 +703,16 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
           </div>
         </div>
 
-        {/* Objetivos simplificados */}
-        {objetivos.length > 0 && (
-          <div className="mt-8">
-            <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-                <span>🎯</span>
-                Mis Objetivos Financieros
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {objetivos.map((objetivo) => {
-                  const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
-                  return (
-                    <div key={objetivo.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <h4 className="font-medium text-blue-800 mb-2">🎯 {objetivo.nombre}</h4>
-                      <div className="flex justify-between text-sm text-blue-600 mb-2">
-                        <span>€{objetivo.actual.toFixed(2)}</span>
-                        <span>€{objetivo.meta.toFixed(2)}</span>
-                      </div>
-                      <div className="bg-blue-200 rounded-full h-3 mb-2">
-                        <div 
-                          className="bg-blue-600 h-3 rounded-full transition-all duration-500"
-                          style={{ width: `${progreso}%` }}
-                        ></div>
-                      </div>
-                      <p className="text-xs text-blue-600">{progreso.toFixed(1)}% completado</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+        {/* Módulo de Metas de Ahorro integrado */}
+        <div className="mt-8">
+          <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+            <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <span>🎯</span>
+              Metas de Ahorro
+            </h3>
+            <SavingsGoals />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -786,7 +765,7 @@ const AppHeader = ({ title, showBack, onBack }) => (
   </div>
 );
 
-const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos }) => {
+const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos }) => {
   const totalIngresos = ingresos.reduce((sum, item) => sum + item.monto, 0);
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
   const balance = totalIngresos - totalGastos;
@@ -1122,21 +1101,7 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
   );
 };
 
-const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
-  const [nuevo, setNuevo] = useState({ nombre: '', meta: '' });
-
-  const agregar = () => {
-    if (nuevo.nombre && nuevo.meta) {
-      setObjetivos([...objetivos, { 
-        id: Date.now(), 
-        ...nuevo, 
-        meta: parseFloat(nuevo.meta),
-        actual: 0 
-      }]);
-      setNuevo({ nombre: '', meta: '' });
-    }
-  };
-
+const MobilePerfilScreen = () => {
   return (
     <div className="p-4 space-y-6">
       <div className="text-center">
@@ -1147,26 +1112,11 @@ const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm">
-        <h3 className="font-semibold mb-4">🎯 Nuevo Objetivo</h3>
-        <div className="space-y-3">
-          <input
-            type="text"
-            placeholder="Nombre del objetivo"
-            value={nuevo.nombre}
-            onChange={(e) => setNuevo({...nuevo, nombre: e.target.value})}
-            className="w-full p-3 border rounded-lg"
-          />
-          <input
-            type="number"
-            placeholder="Meta en €"
-            value={nuevo.meta}
-            onChange={(e) => setNuevo({...nuevo, meta: e.target.value})}
-            className="w-full p-3 border rounded-lg"
-          />
-          <button onClick={agregar} className="w-full bg-blue-600 text-white p-3 rounded-lg">
-            ✅ Crear Objetivo
-          </button>
-        </div>
+        <h3 className="font-semibold mb-4 flex items-center gap-2">
+          <span>🎯</span>
+          Metas de Ahorro
+        </h3>
+        <SavingsGoals />
       </div>
     </div>
   );
@@ -1176,12 +1126,11 @@ const MobileDashboard = () => {
   const [activeScreen, setActiveScreen] = useState('dashboard');
   const [ingresos, setIngresos] = useLocalStorage('ingresos', datosEjemplo.ingresos);
   const [gastos, setGastos] = useLocalStorage('gastos', datosEjemplo.gastos);
-  const [objetivos, setObjetivos] = useLocalStorage('objetivos', []);
 
   const renderScreen = () => {
     switch (activeScreen) {
       case 'dashboard':
-        return <MobileDashboardScreen setActiveScreen={setActiveScreen} ingresos={ingresos} gastos={gastos} objetivos={objetivos} />;
+        return <MobileDashboardScreen setActiveScreen={setActiveScreen} ingresos={ingresos} gastos={gastos} />;
       case 'ingresos':
         return <MobileIngresosScreen ingresos={ingresos} setIngresos={setIngresos} />;
       case 'gastos':
@@ -1191,9 +1140,9 @@ const MobileDashboard = () => {
       case 'estadisticas':
         return <MobileEstadisticasScreen ingresos={ingresos} gastos={gastos} />;
       case 'perfil':
-        return <MobilePerfilScreen objetivos={objetivos} setObjetivos={setObjetivos} />;
+        return <MobilePerfilScreen />;
       default:
-        return <MobileDashboardScreen setActiveScreen={setActiveScreen} ingresos={ingresos} gastos={gastos} objetivos={objetivos} />;
+        return <MobileDashboardScreen setActiveScreen={setActiveScreen} ingresos={ingresos} gastos={gastos} />;
     }
   };
 
@@ -1237,7 +1186,6 @@ const DashboardWithAuth = () => {
   const [forceView, setForceView] = useLocalStorage('preferredView', null);
   const [ingresos, setIngresos] = useLocalStorage('ingresos', datosEjemplo.ingresos);
   const [gastos, setGastos] = useLocalStorage('gastos', datosEjemplo.gastos);
-  const [objetivos, setObjetivos] = useLocalStorage('objetivos', []);
   
   const context = useViewContext();
 
@@ -1268,8 +1216,6 @@ const DashboardWithAuth = () => {
           setIngresos={setIngresos}
           gastos={gastos}
           setGastos={setGastos}
-          objetivos={objetivos}
-          setObjetivos={setObjetivos}
         />
       )}
     </>
