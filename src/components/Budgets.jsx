@@ -23,19 +23,29 @@ const Budgets = ({ transactions = [] }) => {
   const calculateSpentByCategory = () => {
     const spentByCategory = {};
     
+    // Verificar que transactions es un array válido
+    if (!Array.isArray(transactions)) {
+      console.log('⚠️ Transactions no es un array válido:', transactions);
+      return spentByCategory;
+    }
+    
     // Solo procesar gastos (type: 'gasto')
-    const expenses = transactions.filter(t => t.type === 'gasto');
+    const expenses = transactions.filter(t => t && t.type === 'gasto');
     
     expenses.forEach(expense => {
-      const category = expense.category?.toLowerCase() || 'otros';
-      if (!spentByCategory[category]) {
-        spentByCategory[category] = 0;
+      if (expense && expense.category) {
+        const category = expense.category.toLowerCase();
+        const amount = Number(expense.amount) || 0;
+        
+        if (!spentByCategory[category]) {
+          spentByCategory[category] = 0;
+        }
+        spentByCategory[category] += amount;
       }
-      spentByCategory[category] += expense.amount || 0;
     });
     
     console.log('💰 Gastos calculados por categoría:', spentByCategory);
-    console.log('📝 Transacciones recibidas:', transactions);
+    console.log('📝 Total transacciones recibidas:', transactions.length);
     
     return spentByCategory;
   };
@@ -248,11 +258,15 @@ const Budgets = ({ transactions = [] }) => {
       {budgets.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {budgets.map(budget => {
-            const categoryInfo = getCategoryInfo(budget.category);
-            const spent = spentByCategory[budget.category] || 0;
-            const remaining = Math.max(0, budget.limit - spent);
-            const progress = budget.limit > 0 ? (spent / budget.limit) * 100 : 0;
-            const isOverBudget = spent > budget.limit;
+            // Validaciones de seguridad
+            if (!budget || !budget.id) return null;
+            
+            const categoryInfo = getCategoryInfo(budget.category || 'otros');
+            const spent = Number(spentByCategory[budget.category] || 0);
+            const limit = Number(budget.limit || 0);
+            const remaining = Math.max(0, limit - spent);
+            const progress = limit > 0 ? (spent / limit) * 100 : 0;
+            const isOverBudget = spent > limit && limit > 0;
 
             return (
               <BudgetCard
@@ -268,7 +282,7 @@ const Budgets = ({ transactions = [] }) => {
                 isSubmitting={isSubmitting}
               />
             );
-          })}
+          }).filter(Boolean)}
         </div>
       ) : (
         !showForm && (
