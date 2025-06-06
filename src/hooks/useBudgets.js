@@ -31,10 +31,10 @@ export const useBudgets = () => {
     setLoading(true);
     setError(null);
 
+    // Consulta simplificada sin orderBy para evitar la necesidad de índice
     const q = query(
       collection(db, 'budgets'),
-      where('userId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', currentUser.uid)
     );
 
     const unsubscribe = onSnapshot(
@@ -44,7 +44,14 @@ export const useBudgets = () => {
           const budgetsData = querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
-          }));
+          }))
+          // Ordenar en el cliente por fecha de creación
+          .sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || new Date(0);
+            const bTime = b.createdAt?.toDate?.() || new Date(0);
+            return bTime - aTime; // Más reciente primero
+          });
+          
           setBudgets(budgetsData);
           setLoading(false);
         } catch (err) {
