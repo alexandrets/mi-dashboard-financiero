@@ -119,7 +119,7 @@ const convertTransactionsForBudgets = (ingresos, gastos) => {
       description: ingreso.descripcion,
       amount: ingreso.monto,
       date: ingreso.fecha,
-      category: ingreso.categoria || 'Otros'
+      category: (ingreso.categoria || 'otros').toLowerCase() // Asegurar minúsculas
     })),
     ...gastos.map(gasto => ({
       id: gasto.id,
@@ -127,9 +127,12 @@ const convertTransactionsForBudgets = (ingresos, gastos) => {
       description: gasto.descripcion,
       amount: Math.abs(gasto.monto), // Convertir a positivo para el componente Budgets
       date: gasto.fecha,
-      category: gasto.categoria || 'Otros'
+      category: (gasto.categoria || 'otros').toLowerCase() // Asegurar minúsculas
     }))
   ];
+  
+  // Debug: imprimir transacciones para verificar
+  console.log('🔄 Transacciones convertidas para Budgets:', allTransactions);
   
   return allTransactions;
 };
