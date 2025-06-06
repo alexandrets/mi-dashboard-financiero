@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Home, TrendingUp, TrendingDown, BarChart3, CreditCard, User, Plus, ArrowLeft, Calendar, Target, Trash2, Edit3, Monitor, Smartphone, Settings } from 'lucide-react';
 
 // Hook para localStorage 
 const useLocalStorage = (key, initialValue) => {
@@ -81,7 +80,7 @@ const ViewToggle = ({ currentView, onViewChange, context }) => (
         }`}
         title="Vista Web/Desktop"
       >
-        <Monitor size={16} />
+        🖥️
       </button>
       <button
         onClick={() => onViewChange('mobile')}
@@ -92,7 +91,7 @@ const ViewToggle = ({ currentView, onViewChange, context }) => (
         }`}
         title="Vista Móvil/App"
       >
-        <Smartphone size={16} />
+        📱
       </button>
     </div>
     <div className="text-xs text-gray-500 mt-1 text-center">
@@ -102,7 +101,7 @@ const ViewToggle = ({ currentView, onViewChange, context }) => (
 );
 
 // ===========================================
-// VISTA WEB/DESKTOP SIMPLIFICADA
+// VISTA WEB/DESKTOP
 // ===========================================
 
 const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, setObjetivos }) => {
@@ -214,7 +213,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                 €{totalIngresos.toFixed(2)}
               </div>
               <div className="text-gray-500 text-sm">
-                Ingresos Totales
+                📈 Ingresos Totales
               </div>
             </div>
             
@@ -223,7 +222,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                 €{totalGastos.toFixed(2)}
               </div>
               <div className="text-gray-500 text-sm">
-                Gastos Totales
+                📉 Gastos Totales
               </div>
             </div>
             
@@ -232,7 +231,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                 €{balance.toFixed(2)}
               </div>
               <div className="text-gray-500 text-sm">
-                Balance
+                ⚖️ Balance
               </div>
             </div>
           </div>
@@ -240,10 +239,10 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Gráfico de gastos por categoría - SIMPLE */}
+          {/* Gráfico de gastos por categoría */}
           <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Gastos por Categoría</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-6">📊 Gastos por Categoría</h3>
               
               {Object.keys(gastosPorCategoria).length > 0 ? (
                 <div className="space-y-4">
@@ -251,10 +250,22 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                     .sort(([,a], [,b]) => b - a)
                     .map(([categoria, monto]) => {
                       const porcentaje = (monto / totalGastos) * 100;
+                      const emoji = {
+                        'alimentacion': '🍕',
+                        'transporte': '🚗',
+                        'entretenimiento': '🎬',
+                        'servicios': '⚡',
+                        'salud': '🏥',
+                        'otros': '📦'
+                      }[categoria] || '📦';
+                      
                       return (
                         <div key={categoria}>
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium capitalize">{categoria}</span>
+                            <span className="text-sm font-medium capitalize flex items-center gap-2">
+                              <span>{emoji}</span>
+                              {categoria}
+                            </span>
                             <span className="text-sm text-gray-600">
                               €{monto.toFixed(2)} ({porcentaje.toFixed(1)}%)
                             </span>
@@ -271,7 +282,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                 </div>
               ) : (
                 <div className="text-center py-12 text-gray-500">
-                  <BarChart3 size={64} className="mx-auto mb-4 opacity-50" />
+                  <div className="text-6xl mb-4">📊</div>
                   <p>No hay gastos registrados aún</p>
                   <p className="text-sm">¡Agrega tu primer gasto para ver el análisis!</p>
                 </div>
@@ -287,7 +298,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                 onClick={() => setMostrarFormIngreso(!mostrarFormIngreso)}
                 className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
               >
-                <TrendingUp size={20} />
+                <span>📈</span>
                 <span>Nuevo Ingreso</span>
               </button>
 
@@ -295,7 +306,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                 onClick={() => setMostrarFormGasto(!mostrarFormGasto)}
                 className="w-full bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white py-4 px-6 rounded-xl font-semibold transition-all duration-200 transform hover:scale-105 flex items-center justify-center space-x-2 shadow-lg"
               >
-                <TrendingDown size={20} />
+                <span>📉</span>
                 <span>Nuevo Gasto</span>
               </button>
             </div>
@@ -303,7 +314,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
             {/* Formulario de Ingreso */}
             {mostrarFormIngreso && (
               <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                <h4 className="font-semibold text-green-800 mb-3">Agregar Ingreso</h4>
+                <h4 className="font-semibold text-green-800 mb-3">➕ Agregar Ingreso</h4>
                 <div className="space-y-3">
                   <input
                     type="text"
@@ -324,23 +335,23 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                     onChange={(e) => setNuevoIngreso({...nuevoIngreso, categoria: e.target.value})}
                     className="w-full p-2 border border-green-300 rounded-lg text-sm"
                   >
-                    <option value="trabajo">Trabajo</option>
-                    <option value="freelance">Freelance</option>
-                    <option value="inversiones">Inversiones</option>
-                    <option value="otros">Otros</option>
+                    <option value="trabajo">💼 Trabajo</option>
+                    <option value="freelance">💻 Freelance</option>
+                    <option value="inversiones">📈 Inversiones</option>
+                    <option value="otros">📦 Otros</option>
                   </select>
                   <div className="flex gap-2">
                     <button
                       onClick={agregarIngreso}
                       className="flex-1 bg-green-600 text-white p-2 rounded-lg text-sm hover:bg-green-700"
                     >
-                      Agregar
+                      ✅ Agregar
                     </button>
                     <button
                       onClick={() => setMostrarFormIngreso(false)}
                       className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
                     >
-                      Cancelar
+                      ❌ Cancelar
                     </button>
                   </div>
                 </div>
@@ -350,7 +361,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
             {/* Formulario de Gasto */}
             {mostrarFormGasto && (
               <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-                <h4 className="font-semibold text-red-800 mb-3">Agregar Gasto</h4>
+                <h4 className="font-semibold text-red-800 mb-3">➖ Agregar Gasto</h4>
                 <div className="space-y-3">
                   <input
                     type="text"
@@ -371,25 +382,25 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                     onChange={(e) => setNuevoGasto({...nuevoGasto, categoria: e.target.value})}
                     className="w-full p-2 border border-red-300 rounded-lg text-sm"
                   >
-                    <option value="alimentacion">Alimentación</option>
-                    <option value="transporte">Transporte</option>
-                    <option value="entretenimiento">Entretenimiento</option>
-                    <option value="servicios">Servicios</option>
-                    <option value="salud">Salud</option>
-                    <option value="otros">Otros</option>
+                    <option value="alimentacion">🍕 Alimentación</option>
+                    <option value="transporte">🚗 Transporte</option>
+                    <option value="entretenimiento">🎬 Entretenimiento</option>
+                    <option value="servicios">⚡ Servicios</option>
+                    <option value="salud">🏥 Salud</option>
+                    <option value="otros">📦 Otros</option>
                   </select>
                   <div className="flex gap-2">
                     <button
                       onClick={agregarGasto}
                       className="flex-1 bg-red-600 text-white p-2 rounded-lg text-sm hover:bg-red-700"
                     >
-                      Agregar
+                      ✅ Agregar
                     </button>
                     <button
                       onClick={() => setMostrarFormGasto(false)}
                       className="px-4 bg-gray-500 text-white p-2 rounded-lg text-sm hover:bg-gray-600"
                     >
-                      Cancelar
+                      ❌ Cancelar
                     </button>
                   </div>
                 </div>
@@ -398,7 +409,8 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
 
             {/* Transacciones Recientes */}
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
-              <h3 className="text-base font-bold text-gray-800 mb-4">
+              <h3 className="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                <span>📋</span>
                 Transacciones Recientes
               </h3>
 
@@ -417,7 +429,7 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-800 truncate">
-                            {transaccion.descripcion}
+                            {transaccion.monto > 0 ? '💰' : '💸'} {transaccion.descripcion}
                           </p>
                           <div className="flex items-center space-x-2 text-xs text-gray-500">
                             <span className={`px-2 py-1 rounded-full ${
@@ -441,10 +453,10 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
                           
                           <button 
                             onClick={() => eliminarTransaccion(transaccion.id, transaccion.monto > 0 ? 'ingreso' : 'gasto')}
-                            className="w-6 h-6 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors"
+                            className="w-6 h-6 text-gray-400 hover:text-red-500 rounded-full hover:bg-red-50 flex items-center justify-center transition-colors text-xs"
                             title="Eliminar transacción"
                           >
-                            <Trash2 size={14} />
+                            🗑️
                           </button>
                         </div>
                       </div>
@@ -459,13 +471,16 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
         {objetivos.length > 0 && (
           <div className="mt-8">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-6">Mis Objetivos Financieros</h3>
+              <h3 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+                <span>🎯</span>
+                Mis Objetivos Financieros
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {objetivos.map((objetivo) => {
                   const progreso = Math.min((objetivo.actual / objetivo.meta) * 100, 100);
                   return (
                     <div key={objetivo.id} className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <h4 className="font-medium text-blue-800 mb-2">{objetivo.nombre}</h4>
+                      <h4 className="font-medium text-blue-800 mb-2">🎯 {objetivo.nombre}</h4>
                       <div className="flex justify-between text-sm text-blue-600 mb-2">
                         <span>€{objetivo.actual.toFixed(2)}</span>
                         <span>€{objetivo.meta.toFixed(2)}</span>
@@ -490,22 +505,22 @@ const WebDashboard = ({ ingresos, setIngresos, gastos, setGastos, objetivos, set
 };
 
 // ===========================================
-// VISTA MÓVIL (igual que antes)
+// VISTA MÓVIL
 // ===========================================
 
 const BottomNavigation = ({ activeScreen, setActiveScreen }) => {
   const navItems = [
-    { id: 'dashboard', icon: Home, label: 'Inicio' },
-    { id: 'ingresos', icon: TrendingUp, label: 'Ingresos' },
-    { id: 'gastos', icon: TrendingDown, label: 'Gastos' },
-    { id: 'estadisticas', icon: BarChart3, label: 'Stats' },
-    { id: 'perfil', icon: User, label: 'Perfil' }
+    { id: 'dashboard', icon: '🏠', label: 'Inicio' },
+    { id: 'ingresos', icon: '📈', label: 'Ingresos' },
+    { id: 'gastos', icon: '📉', label: 'Gastos' },
+    { id: 'estadisticas', icon: '📊', label: 'Stats' },
+    { id: 'perfil', icon: '👤', label: 'Perfil' }
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-50 shadow-lg">
       <div className="flex justify-around">
-        {navItems.map(({ id, icon: Icon, label }) => (
+        {navItems.map(({ id, icon, label }) => (
           <button
             key={id}
             onClick={() => setActiveScreen(id)}
@@ -515,7 +530,7 @@ const BottomNavigation = ({ activeScreen, setActiveScreen }) => {
                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
             }`}
           >
-            <Icon size={22} />
+            <span className="text-lg">{icon}</span>
             <span className="text-xs mt-1 font-medium">{label}</span>
           </button>
         ))}
@@ -528,7 +543,7 @@ const AppHeader = ({ title, showBack, onBack }) => (
   <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-4 flex items-center shadow-lg">
     {showBack && (
       <button onClick={onBack} className="mr-3 p-1 hover:bg-white/20 rounded-lg transition-colors">
-        <ArrowLeft size={24} />
+        <span className="text-xl">←</span>
       </button>
     )}
     <h1 className="text-xl font-bold">{title}</h1>
@@ -540,22 +555,18 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
   const totalGastos = Math.abs(gastos.reduce((sum, item) => sum + item.monto, 0));
   const balance = totalIngresos - totalGastos;
 
-  const todasTransacciones = [...ingresos, ...gastos]
-    .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
-    .slice(0, 5);
-
   return (
     <div className="p-4 space-y-6">
       <div className="bg-gradient-to-br from-blue-600 via-purple-600 to-blue-800 text-white p-6 rounded-2xl shadow-lg">
         <div className="flex justify-between items-start">
           <div>
-            <h2 className="text-lg opacity-90">Balance Total</h2>
+            <h2 className="text-lg opacity-90">💰 Balance Total</h2>
             <p className="text-3xl font-bold">€{balance.toFixed(2)}</p>
           </div>
           <div className="text-right">
             <p className="text-sm opacity-80">Este mes</p>
             <p className={`text-lg font-bold ${balance >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-              {balance >= 0 ? '+' : ''}€{balance.toFixed(2)}
+              {balance >= 0 ? '📈 +' : '📉 '}€{Math.abs(balance).toFixed(2)}
             </p>
           </div>
         </div>
@@ -564,7 +575,7 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-green-50 p-4 rounded-xl border border-green-200">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="text-green-600" size={20} />
+            <span className="text-green-600 text-xl">📈</span>
             <span className="text-green-800 font-medium">Ingresos</span>
           </div>
           <p className="text-2xl font-bold text-green-700">€{totalIngresos.toFixed(2)}</p>
@@ -572,7 +583,7 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
 
         <div className="bg-red-50 p-4 rounded-xl border border-red-200">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingDown className="text-red-600" size={20} />
+            <span className="text-red-600 text-xl">📉</span>
             <span className="text-red-800 font-medium">Gastos</span>
           </div>
           <p className="text-2xl font-bold text-red-700">€{totalGastos.toFixed(2)}</p>
@@ -580,20 +591,20 @@ const MobileDashboardScreen = ({ setActiveScreen, ingresos, gastos, objetivos })
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800">Acciones Rápidas</h3>
+        <h3 className="text-lg font-semibold text-gray-800">⚡ Acciones Rápidas</h3>
         <div className="grid grid-cols-2 gap-3">
           <button 
             onClick={() => setActiveScreen('ingresos')}
             className="bg-gradient-to-r from-green-500 to-green-600 text-white p-4 rounded-xl flex items-center justify-center gap-2"
           >
-            <Plus size={20} />
+            <span className="text-xl">➕</span>
             <span className="font-medium">Nuevo Ingreso</span>
           </button>
           <button 
             onClick={() => setActiveScreen('gastos')}
             className="bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-xl flex items-center justify-center gap-2"
           >
-            <Plus size={20} />
+            <span className="text-xl">➖</span>
             <span className="font-medium">Nuevo Gasto</span>
           </button>
         </div>
@@ -621,7 +632,7 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
   return (
     <div className="p-4 space-y-6">
       <div className="bg-white p-4 rounded-xl shadow-sm">
-        <h3 className="font-semibold mb-4">Nuevo Ingreso</h3>
+        <h3 className="font-semibold mb-4">📈 Nuevo Ingreso</h3>
         <div className="space-y-3">
           <input
             type="text"
@@ -638,7 +649,7 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
             className="w-full p-3 border rounded-lg"
           />
           <button onClick={agregar} className="w-full bg-green-600 text-white p-3 rounded-lg">
-            Agregar Ingreso
+            ✅ Agregar Ingreso
           </button>
         </div>
       </div>
@@ -648,8 +659,8 @@ const MobileIngresosScreen = ({ ingresos, setIngresos }) => {
           <div key={ingreso.id} className="bg-white p-4 rounded-lg shadow-sm">
             <div className="flex justify-between">
               <div>
-                <p className="font-medium">{ingreso.descripcion}</p>
-                <p className="text-sm text-gray-500">{ingreso.categoria}</p>
+                <p className="font-medium">💰 {ingreso.descripcion}</p>
+                <p className="text-sm text-gray-500">📂 {ingreso.categoria}</p>
               </div>
               <span className="text-green-600 font-bold">+€{ingreso.monto}</span>
             </div>
@@ -678,7 +689,7 @@ const MobileGastosScreen = ({ gastos, setGastos }) => {
   return (
     <div className="p-4 space-y-6">
       <div className="bg-white p-4 rounded-xl shadow-sm">
-        <h3 className="font-semibold mb-4">Nuevo Gasto</h3>
+        <h3 className="font-semibold mb-4">📉 Nuevo Gasto</h3>
         <div className="space-y-3">
           <input
             type="text"
@@ -695,7 +706,7 @@ const MobileGastosScreen = ({ gastos, setGastos }) => {
             className="w-full p-3 border rounded-lg"
           />
           <button onClick={agregar} className="w-full bg-red-600 text-white p-3 rounded-lg">
-            Agregar Gasto
+            ✅ Agregar Gasto
           </button>
         </div>
       </div>
@@ -705,8 +716,8 @@ const MobileGastosScreen = ({ gastos, setGastos }) => {
           <div key={gasto.id} className="bg-white p-4 rounded-lg shadow-sm">
             <div className="flex justify-between">
               <div>
-                <p className="font-medium">{gasto.descripcion}</p>
-                <p className="text-sm text-gray-500">{gasto.categoria}</p>
+                <p className="font-medium">💸 {gasto.descripcion}</p>
+                <p className="text-sm text-gray-500">📂 {gasto.categoria}</p>
               </div>
               <span className="text-red-600 font-bold">-€{Math.abs(gasto.monto)}</span>
             </div>
@@ -725,20 +736,20 @@ const MobileEstadisticasScreen = ({ ingresos, gastos }) => {
   return (
     <div className="p-4 space-y-6">
       <div className="bg-white p-6 rounded-xl shadow-sm">
-        <h3 className="font-semibold mb-4">Resumen Financiero</h3>
+        <h3 className="font-semibold mb-4">📊 Resumen Financiero</h3>
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div className="text-center">
-            <p className="text-sm text-gray-600">Ingresos</p>
+            <p className="text-sm text-gray-600">📈 Ingresos</p>
             <p className="text-2xl font-bold text-green-600">€{totalIngresos.toFixed(2)}</p>
           </div>
           <div className="text-center">
-            <p className="text-sm text-gray-600">Gastos</p>
+            <p className="text-sm text-gray-600">📉 Gastos</p>
             <p className="text-2xl font-bold text-red-600">€{totalGastos.toFixed(2)}</p>
           </div>
         </div>
         <hr className="my-4" />
         <div className="text-center">
-          <p className="text-sm text-gray-600">Balance</p>
+          <p className="text-sm text-gray-600">⚖️ Balance</p>
           <p className={`text-3xl font-bold ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             €{balance.toFixed(2)}
           </p>
@@ -767,13 +778,13 @@ const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
     <div className="p-4 space-y-6">
       <div className="text-center">
         <div className="w-24 h-24 bg-blue-500 rounded-full mx-auto mb-4 flex items-center justify-center">
-          <User size={48} className="text-white" />
+          <span className="text-4xl">👤</span>
         </div>
         <h2 className="text-2xl font-bold">Mi Perfil</h2>
       </div>
 
       <div className="bg-white p-4 rounded-xl shadow-sm">
-        <h3 className="font-semibold mb-4">Nuevo Objetivo</h3>
+        <h3 className="font-semibold mb-4">🎯 Nuevo Objetivo</h3>
         <div className="space-y-3">
           <input
             type="text"
@@ -790,7 +801,7 @@ const MobilePerfilScreen = ({ objetivos, setObjetivos }) => {
             className="w-full p-3 border rounded-lg"
           />
           <button onClick={agregar} className="w-full bg-blue-600 text-white p-3 rounded-lg">
-            Crear Objetivo
+            ✅ Crear Objetivo
           </button>
         </div>
       </div>
@@ -823,11 +834,11 @@ const MobileDashboard = () => {
 
   const getScreenTitle = () => {
     const titles = {
-      'dashboard': 'Mi Dashboard',
-      'ingresos': 'Ingresos',
-      'gastos': 'Gastos',
-      'estadisticas': 'Estadísticas',
-      'perfil': 'Perfil'
+      'dashboard': '🏠 Mi Dashboard',
+      'ingresos': '📈 Ingresos',
+      'gastos': '📉 Gastos',
+      'estadisticas': '📊 Estadísticas',
+      'perfil': '👤 Perfil'
     };
     return titles[activeScreen] || 'Dashboard';
   };
@@ -898,4 +909,3 @@ const App = () => {
 };
 
 export default App;
-
